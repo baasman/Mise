@@ -24,6 +24,13 @@ interface PantryRow {
 async function main() {
   const rows: PantryRow[] = JSON.parse(readFileSync(join(__dirname, "pantry.json"), "utf8"));
 
+  // Skip if the pantry is already populated, so it's cheap to run on every deploy.
+  const existing = await prisma.ingredient.count({ where: { deviceId: null } });
+  if (existing >= rows.length) {
+    console.log(`Pantry already seeded (${existing} ingredients) — skipping.`);
+    return;
+  }
+
   // Prisma can't target a null value inside a compound-unique `where`, so we
   // find-then-update/create by hand for the global (deviceId = null) pantry.
   for (const p of rows) {
