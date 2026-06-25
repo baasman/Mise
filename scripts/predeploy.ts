@@ -15,10 +15,20 @@ function skip(reason: string) {
 if (!process.env.DATABASE_URL) skip("no DATABASE_URL");
 if (process.env.VERCEL_ENV === "preview") skip("preview deploy");
 
-const run = (cmd: string) => execSync(cmd, { stdio: "inherit" });
+const run = (cmd: string, env?: Record<string, string>) =>
+  execSync(cmd, { stdio: "inherit", env: { ...process.env, ...env } });
+
+// `prisma db push` can't run over a pgbouncer pool. The Vercel Postgres / Neon
+// integration injects an unpooled URL alongside the pooled DATABASE_URL — use it
+// for the push if present, so the default integration setup works untouched while
+// runtime still uses the pooled DATABASE_URL.
+const directUrl =
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DATABASE_URL!;
 
 console.log("[predeploy] syncing schema (prisma db push)…");
-run("prisma db push --skip-generate");
+run("prisma db push --skip-generate", { DATABASE_URL: directUrl });
 console.log("[predeploy] seeding pantry (idempotent)…");
 run("tsx prisma/seed.ts");
 console.log("[predeploy] done.");
