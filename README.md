@@ -52,4 +52,30 @@ and suggestion reasons use the local fallback — the app degrades gracefully.
 | `npm run build`    | production build                                |
 | `npm test`         | engine unit tests (radar math, ranking, flags)  |
 | `npm run db:push`  | sync schema to the database                     |
-| `npm run db:seed`  | seed / re-seed the global pantry                |
+| `npm run db:seed`  | seed / re-seed the global pantry (from `prisma/pantry.json`) |
+
+## Deploy (Vercel)
+
+Vercel auto-detects Next.js; `prisma generate` runs via the `postinstall` script.
+The build needs no database. Two steps beyond importing the repo:
+
+**1. Add a Postgres + env vars** (Vercel → Storage → create Postgres, e.g. Neon):
+
+| Variable            | Value                                             |
+| ------------------- | ------------------------------------------------- |
+| `DATABASE_URL`      | the pooled connection string (set by the integration) |
+| `ANTHROPIC_API_KEY` | optional — enables flavor estimation + AI "why"   |
+
+**2. Apply the schema and seed the pantry once** against the prod DB. Run locally
+with the **direct** (unpooled) connection string — `db push` doesn't work over a
+pgbouncer pool:
+
+```bash
+DATABASE_URL="<direct-prod-url>" npx prisma db push
+DATABASE_URL="<direct-prod-url>" npm run db:seed   # loads all 489 ingredients
+```
+
+The pantry data ships in `prisma/pantry.json`, so seeding is deterministic and does
+not call Claude. Saved dishes are anonymous + device-scoped (an httpOnly cookie), so
+no auth is required. For higher traffic, keep `DATABASE_URL` on the pooled endpoint
+(serverless connection limits) and use the direct URL only for `db push`.
