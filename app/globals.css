@@ -1,0 +1,140 @@
+/* Mise — global tokens lifted verbatim from Mise.dc.html */
+:root {
+  --canvas: #efe7d9;
+  --surface: #faf6ee;
+  --card: #fffdf8;
+  --rail: #f5eee0;
+  --line: #e3d9c7;
+  --line-soft: #ece3d3;
+  --accent: #b5481f; /* terracotta */
+  --gold: #b58a3b; /* secondary */
+  --ink: #2e2a24;
+  --muted: #8a7d6a;
+  --muted-2: #a0917c;
+  --faint: #b3a48d;
+  --serif: "Spectral", Georgia, serif;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  background: var(--canvas);
+  font-family: var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+input,
+select,
+button,
+textarea {
+  font-family: inherit;
+}
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #d8ccb6;
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+select option {
+  font-family: var(--mono);
+}
+
+/* hover utilities — approximate the prototype's style-hover attributes */
+.hb:hover {
+  border-color: var(--accent) !important;
+}
+.ht:hover {
+  color: var(--accent) !important;
+}
+.hd:hover {
+  opacity: 0.62;
+}
+.rowcard:hover {
+  border-color: #ddd0b7 !important;
+}
+.ghost:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+.addbtn:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: #faf3e8 !important;
+}
+.applybtn:hover {
+  background: var(--accent) !important;
+}
+.swapbtn:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+.grip {
+  cursor: grab;
+  user-select: none;
+}
+.grip:hover {
+  color: var(--accent) !important;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+}
+.aroma-input:focus {
+  border-color: var(--accent) !important;
+  width: 96px !important;
+}
+.method:focus {
+  border-color: #d8a98c !important;
+}
+
+/* Print: only the recipe card, once, on white. The card lives in a fixed-position
+   modal, so we hide the app chrome (header/main), neutralize the modal so it flows
+   normally (fixed elements otherwise repeat on every page), and drop the toolbar. */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+  header,
+  main {
+    display: none !important;
+  }
+  .recipe-overlay {
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .recipe-panel {
+    position: static !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+  }
+  .recipe-panel > *:not(#recipe-print) {
+    display: none !important;
+  }
+  #recipe-print {
+    padding: 0 !important;
+  }
+}

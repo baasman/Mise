@@ -1,0 +1,73 @@
+// Mise — data model. Postgres via Prisma.
+// Json columns hold the exact shapes the client already serializes (axes maps,
+// dish snapshots), so the prototype's state model is reused, not re-invented.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// One row per anonymous cookie ("mise_device"). No login in v1.
+model Device {
+  id          String       @id @default(uuid())
+  createdAt   DateTime     @default(now())
+  ingredients Ingredient[]
+  dishes      Dish[]
+}
+
+// Canonical pantry (deviceId null) + a device's custom ingredients (deviceId set).
+model Ingredient {
+  id         String   @id @default(uuid())
+  slug       String // stable id from the prototype (e.g. "olive_oil") or "cust_..."
+  name       String
+  roles      String[]
+  aromas     String[]
+  novelty     Float    @default(0)
+  axes        Json // { salt, sweet, sour, bitter, umami, fat, heat } each 0..1
+  texture     String   @default("neutral") // crunchy|crisp|creamy|tender|chewy|juicy|neutral
+  temperature String   @default("room") // cold|room|warm
+  provenance  String   @default("estimate") // estimate | your_read | unprofiled
+  source     String   @default("seed") // seed | claude | custom
+  deviceId   String? // null = global pantry; set = this device's own ingredient
+  device     Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([deviceId, slug])
+  @@index([deviceId])
+}
+
+// Skip the Claude call when the same ingredient name has been estimated before.
+model FlavorEstimateCache {
+  ingredientKey String   @id // normalized (lowercased, trimmed) name
+  axes          Json
+  aromas        String[]
+  texture       String?
+  temperature   String?
+  roles         String[] @default([])
+  novelty       Float?
+  model         String
+  createdAt     DateTime @default(now())
+}
+
+// A saved dish snapshot — device-scoped, save-by-name upsert.
+model Dish {
+  id         String   @id @default(uuid())
+  deviceId   String
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  name       String
+  intentId   String?
+  formId     String?
+  customForm Json?
+  risk       Float    @default(0.3)
+  method     String   @default("")
+  data       Json // full snapshot: components, committed rows (+ overrides), customIngredients
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([deviceId, name])
+  @@index([deviceId])
+}
