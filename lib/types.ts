@@ -14,6 +14,8 @@ export interface Ingredient {
   custom?: boolean;
   // provenance from the server for custom/estimated items (else derived)
   unprofiled?: boolean;
+  // true while a Claude flavor estimate is in flight for a just-added custom item
+  estimating?: boolean;
 }
 
 // A named sub-assembly of the dish.

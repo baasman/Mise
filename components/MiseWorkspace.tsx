@@ -20,12 +20,18 @@ export function MiseWorkspace() {
   const [whyOverrides, setWhyOverrides] = useState<Record<string, string>>({});
   const whyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Off-pantry add: ground it with a Claude estimate (falls back to unprofiled).
+  // Off-pantry add: drop it on the board immediately (as "estimating"), then
+  // ground it with a Claude estimate that fills the profile in place. Falls back
+  // to unprofiled if the estimate fails — the row stays, just stops spinning.
   function addCustomWithEstimate(name: string) {
-    m.closePicker();
+    const id = m.addCustomIngredient(name);
+    if (!id) {
+      m.closePicker();
+      return;
+    }
     estimateFlavor(name)
-      .then((r) => m.addCustomIngredient(name, r.axes, r.aromas, r.texture, r.temperature, r.roles, r.novelty))
-      .catch(() => m.addCustomIngredient(name));
+      .then((r) => m.resolveCustomIngredient(id, r))
+      .catch(() => m.failCustomIngredient(id));
   }
 
   // Ask Claude (Haiku) to phrase the "why" for the current suggestion set.
@@ -91,6 +97,32 @@ export function MiseWorkspace() {
       <FormModal m={m} />
       <LibraryModal m={m} />
       <RecipeModal m={m} />
+
+      {state.toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            background: "var(--ink)",
+            color: "#f3ece1",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            letterSpacing: ".4px",
+            padding: "10px 18px",
+            borderRadius: 999,
+            boxShadow: "0 6px 22px rgba(46,42,36,.28)",
+            pointerEvents: "none",
+            animation: "miseToastIn .18s ease-out",
+          }}
+        >
+          {state.toast}
+        </div>
+      )}
     </div>
   );
 }

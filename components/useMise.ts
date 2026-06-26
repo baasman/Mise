@@ -65,6 +65,7 @@ export interface MiseState {
   expandedRow: number | null;
   suggestionCount: number;
   pantryLoaded: boolean;
+  toast: string | null;
 }
 
 const initialState: MiseState = {
@@ -106,6 +107,7 @@ const initialState: MiseState = {
   expandedRow: null,
   suggestionCount: 12,
   pantryLoaded: false,
+  toast: null,
 };
 
 type Updater = Partial<MiseState> | ((s: MiseState) => Partial<MiseState>);
@@ -116,10 +118,21 @@ export function useMise() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const set = useCallback((u: Updater) => {
     setState((s) => ({ ...s, ...(typeof u === "function" ? u(s) : u) }));
   }, []);
+
+  // A quiet, self-dismissing confirmation line (e.g. after adding an ingredient).
+  const flashToast = useCallback(
+    (msg: string) => {
+      set({ toast: msg });
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => set({ toast: null }), 1800);
+    },
+    [set],
+  );
 
   // Hydrate pantry + saved dishes from the backend (graceful if offline).
   useEffect(() => {
@@ -185,8 +198,9 @@ export function useMise() {
           activeComp: target,
         };
       });
+      flashToast(`Added ${ing.name}`);
     },
-    [byId, set],
+    [byId, set, flashToast],
   );
 
   const addComponentNamed = useCallback(
@@ -438,33 +452,29 @@ export function useMise() {
   }, [set]);
 
   // ---- custom ingredient (off-pantry) ----
+  // Optimistic: the ingredient lands on the board immediately as `estimating`,
+  // so there's instant feedback. The Claude estimate fills its profile in place
+  // via resolveCustomIngredient (or failCustomIngredient leaves it unprofiled).
+  // Returns the new ingredient id so the caller can resolve it. componentId is
+  // optional; defaults to the active component.
   const addCustomIngredient = useCallback(
-    (
-      name: string,
-      axes?: typeof ZERO_AXES,
-      aromas?: string[],
-      texture?: Texture,
-      temperature?: Temperature,
-      roles?: Role[],
-      novelty?: number,
-      componentId?: string,
-    ) => {
+    (name: string, componentId?: string): string | null => {
       const nm = (name || "").trim();
-      if (!nm) return;
+      if (!nm) return null;
+      const id = "cust_" + stateRef.current.custId;
       set((s) => {
-        const id = "cust_" + s.custId;
-        const profiled = !!axes;
         const ing: Ingredient = {
           id,
           name: nm,
-          roles: roles ?? [],
-          aromas: aromas ?? [],
-          novelty: novelty ?? 0,
+          roles: [],
+          aromas: [],
+          novelty: 0,
           custom: true,
-          unprofiled: !profiled,
-          axes: axes ?? { ...ZERO_AXES },
-          texture: texture ?? "neutral",
-          temperature: temperature ?? "room",
+          unprofiled: true,
+          estimating: true,
+          axes: { ...ZERO_AXES },
+          texture: "neutral",
+          temperature: "room",
         };
         let components = s.components;
         let cid = s.cid;
@@ -488,7 +498,7 @@ export function useMise() {
               uid: s.uid,
               ingredientId: id,
               magnitude: "supporting" as Magnitude,
-              role: (roles && roles[0]) ?? ("finish" as Role),
+              role: "finish" as Role,
               componentId: target,
             },
           ],
@@ -498,7 +508,52 @@ export function useMise() {
           search: "",
         };
       });
+      flashToast(`Added ${nm} — reading its profile…`);
+      return id;
     },
+    [set, flashToast],
+  );
+
+  // Estimate came back: fill the custom ingredient's profile in place and clear
+  // the estimating flag. Also adopt the estimated primary role on its board rows
+  // that still carry the placeholder role.
+  const resolveCustomIngredient = useCallback(
+    (
+      id: string,
+      p: { axes: AxisMap; aromas: string[]; texture: Texture; temperature: Temperature; roles: Role[]; novelty: number },
+    ) =>
+      set((s) => ({
+        customIngredients: s.customIngredients.map((ci) =>
+          ci.id === id
+            ? {
+                ...ci,
+                axes: p.axes,
+                aromas: p.aromas,
+                texture: p.texture,
+                temperature: p.temperature,
+                roles: p.roles,
+                novelty: p.novelty,
+                unprofiled: false,
+                estimating: false,
+              }
+            : ci,
+        ),
+        committed: s.committed.map((c) =>
+          c.ingredientId === id && c.role === "finish" && p.roles[0] ? { ...c, role: p.roles[0] } : c,
+        ),
+      })),
+    [set],
+  );
+
+  // Estimate failed (offline / no key): keep the ingredient, just stop the
+  // spinner — it stays `unprofiled` for the cook to read in by hand.
+  const failCustomIngredient = useCallback(
+    (id: string) =>
+      set((s) => ({
+        customIngredients: s.customIngredients.map((ci) =>
+          ci.id === id ? { ...ci, estimating: false } : ci,
+        ),
+      })),
     [set],
   );
 
@@ -578,7 +633,10 @@ export function useMise() {
       customForm: d.customForm ? JSON.parse(JSON.stringify(d.customForm)) : null,
       components: JSON.parse(JSON.stringify(d.components)),
       committed: JSON.parse(JSON.stringify(d.committed)),
-      customIngredients: JSON.parse(JSON.stringify(d.customIngredients || [])),
+      customIngredients: (JSON.parse(JSON.stringify(d.customIngredients || [])) as Ingredient[]).map((ci) => ({
+        ...ci,
+        estimating: false,
+      })),
       activeComp: d.activeComp,
       risk: d.risk != null ? d.risk : 0.3,
       method: d.method || "",
@@ -645,6 +703,9 @@ export function useMise() {
     setCustomFormDraft,
     setCustomForm,
     addCustomIngredient,
+    resolveCustomIngredient,
+    failCustomIngredient,
+    flashToast,
     setDishName,
     setMethod,
     setServings,

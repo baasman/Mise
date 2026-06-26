@@ -18,17 +18,22 @@ import type { Mise } from "./useMise";
 
 const MAGS: Magnitude[] = ["trace", "supporting", "dominant"];
 
-function provenanceOf(m: Mise, c: CommittedRow): "your read" | "unprofiled" | "estimate" {
+function provenanceOf(m: Mise, c: CommittedRow): "your read" | "estimating" | "unprofiled" | "estimate" {
   if (c.axes != null) return "your read";
   const ing = m.byId(c.ingredientId);
+  if (ing?.estimating) return "estimating";
   if (ing?.custom && ing.unprofiled) return "unprofiled";
   return "estimate";
 }
 function provColor(p: string) {
-  return p === "your read" ? "#1f8a5b" : p === "unprofiled" ? "#b5481f" : "#a9925f";
+  if (p === "your read") return "#1f8a5b";
+  if (p === "estimating") return "#9a7a44";
+  if (p === "unprofiled") return "#b5481f";
+  return "#a9925f";
 }
 function provNote(p: string) {
   if (p === "your read") return "You’ve tuned this from the starting estimate — the radar reflects your read now.";
+  if (p === "estimating") return "Reading this ingredient’s flavor with Claude — its profile and aromas will fill in here in a moment, and it’ll join the radar.";
   if (p === "unprofiled") return "No flavor data for your own ingredient, so it’s not on the radar yet. Give it a read below and it will be.";
   return "A hand-made estimate for this prototype, not a measurement — a real version would draw these from a tasting panel or aroma-compound data. Nudge anything to match your own palate.";
 }
@@ -143,8 +148,11 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
               className="hb"
               style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".3px", color: provColor(prov), background: "#faf4ea", border: "1px solid var(--line-soft)", borderRadius: 4, padding: "2px 6px" }}
             >
-              {prov}
-              <span style={{ fontSize: 8, opacity: 0.7 }}>&#9662;</span>
+              {prov === "estimating" && (
+                <span className="mise-pulse" style={{ width: 6, height: 6, borderRadius: 999, background: provColor(prov), display: "inline-block" }} />
+              )}
+              {prov === "estimating" ? "estimating…" : prov}
+              {prov !== "estimating" && <span style={{ fontSize: 8, opacity: 0.7 }}>&#9662;</span>}
             </span>
             {tex !== "neutral" && (
               <span

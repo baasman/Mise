@@ -105,6 +105,32 @@ textarea:focus {
   border-color: #d8a98c !important;
 }
 
+/* pulsing dot for the "estimating…" provenance pill while a Claude profile loads */
+@keyframes misePulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mise-pulse {
+  animation: misePulse 1s ease-in-out infinite;
+}
+
+/* toast confirmation — quiet rise + fade in */
+@keyframes miseToastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* Print: only the recipe card, once, on white. The card lives in a fixed-position
    modal, so we hide the app chrome (header/main), neutralize the modal so it flows
    normally (fixed elements otherwise repeat on every page), and drop the toolbar. */
