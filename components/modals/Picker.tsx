@@ -1,9 +1,15 @@
 "use client";
+import { useEffect, useRef } from "react";
 import type { Mise } from "../useMise";
 import { overlay, panel, closeX, modalTitle, modalSub } from "./shared";
 
 export function Picker({ m, onAddCustom }: { m: Mise; onAddCustom: (name: string) => void }) {
   const { state, pantry } = m;
+  // Focus the search box as soon as the picker opens, so you can type immediately.
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (state.pickerOpen) inputRef.current?.focus();
+  }, [state.pickerOpen]);
   if (!state.pickerOpen) return null;
 
   const isSwap = state.pickerMode === "swap";
@@ -41,6 +47,8 @@ export function Picker({ m, onAddCustom }: { m: Mise; onAddCustom: (name: string
         </div>
         <div style={{ padding: "0 20px 12px" }}>
           <input
+            ref={inputRef}
+            autoFocus
             value={state.search}
             onChange={(e) => m.setSearch(e.target.value)}
             placeholder="Search the pantry by name, role or aroma…"
