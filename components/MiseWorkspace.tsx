@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { AXES, ZERO_AXES, type AxisMap } from "@/lib/domain";
-import { axisDisplay, boardAromaWeights, desiredVec, getSuggestions } from "@/lib/engine";
+import { boardAromaWeights, getSuggestions, intentGap } from "@/lib/engine";
 import { estimateFlavor, fetchWhy } from "@/lib/api-client";
 import { useMise } from "./useMise";
 import { Header } from "./Header";
@@ -49,12 +48,7 @@ export function MiseWorkspace() {
       activeCompName: m.activeCompName(),
       form: m.form(),
     });
-    const disp = axisDisplay(state.committed, byId);
-    const desired = desiredVec(intent);
-    const low = { ...ZERO_AXES } as AxisMap;
-    AXES.forEach((k) => {
-      low[k] = Math.max(0, desired[k] - disp[k]);
-    });
+    const low = intentGap(state.committed, byId, intent);
     const candidates = suggestions.map((s) => {
       const ing = byId(s.id);
       return { id: s.id, name: s.name, roles: ing?.roles ?? [], shared: s.shared, contrast: s.contrast, structure: s.structure };

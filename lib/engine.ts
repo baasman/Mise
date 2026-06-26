@@ -163,6 +163,25 @@ export function desiredVec(intent: Intent): AxisMap {
   return d;
 }
 
+// How far below the intent each axis sits — the gap the suggestions chase.
+// Explicit intent targets always count. The soft 0.35 baseline for axes the
+// intent doesn't name fades as the board develops: an empty/sparse board still
+// gets "round it out" breadth, but once a dish has a clear character (≈5
+// ingredients in) the engine serves THAT aim instead of chasing a generic "bit
+// of everything" — which used to pull a saturated savory dish toward
+// off-character bitter/sour and surface things like matcha or cocoa.
+export function intentGap(committed: CommittedRow[], byId: ById, intent: Intent): AxisMap {
+  const disp = axisDisplay(committed, byId);
+  const n = committed.length;
+  const fade = n <= 2 ? 1 : Math.max(0, 1 - (n - 2) / 3);
+  const low: AxisMap = { ...ZERO_AXES };
+  AXES.forEach((k) => {
+    const target = intent.targets[k] != null ? (intent.targets[k] as number) : 0.35 * fade;
+    low[k] = Math.max(0, target - disp[k]);
+  });
+  return low;
+}
+
 export function buildFlags(
   disp: AxisMap,
   intent: Intent,
@@ -329,11 +348,19 @@ export interface SuggestionInput {
 export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null } = input;
   const disp = axisDisplay(committed, byId);
-  const desired = desiredVec(intent);
-  const low: AxisMap = { ...ZERO_AXES };
-  AXES.forEach((k) => {
-    low[k] = Math.max(0, desired[k] - disp[k]);
-  });
+  const low = intentGap(committed, byId, intent);
+  // Reinforcement (strength on the intent's named axes) and off-aim push (raising
+  // an axis already past what the aim wants). Used as the ranking spine only when
+  // the board has met the intent and the flavor gap has collapsed — so an already
+  // on-aim dish gets coherent "deepen it" picks, not novelty noise that fights it.
+  const tgt = intent.targets;
+  const reinforceOf = (ing: Ingredient) =>
+    AXES.reduce((sum, k) => sum + (ing.axes[k] || 0) * (tgt[k] != null ? (tgt[k] as number) : 0), 0);
+  const offAimOf = (ing: Ingredient) =>
+    AXES.reduce((sum, k) => {
+      const want = tgt[k] != null ? (tgt[k] as number) : 0;
+      return sum + (ing.axes[k] || 0) * Math.max(0, disp[k] - want);
+    }, 0);
   const committedIds = committed.map((c) => c.ingredientId);
   const pool = rawPool.filter((p) => !committedIds.includes(p.id));
 
@@ -406,7 +433,8 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
         }
       });
     }
-    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, riskMatch: 1 - Math.abs(ing.novelty - risk) };
+    const aligned = Math.max(0, reinforceOf(ing) - offAimOf(ing));
+    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, aligned, riskMatch: 1 - Math.abs(ing.novelty - risk) };
   });
 
   // Normalize each signal across the candidate set so affinity and contrast genuinely
@@ -415,8 +443,18 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const maxAff = raw.reduce((m, s) => Math.max(m, s.aff), 0);
   const maxCon = raw.reduce((m, s) => Math.max(m, s.con), 0);
   const maxStruct = raw.reduce((m, s) => Math.max(m, s.structure), 0);
+  const maxAligned = raw.reduce((m, s) => Math.max(m, s.aligned), 0);
+  // The intent has been met when nothing on the board has a flavor gap left to fill.
+  // Then the spine becomes alignment (deepen the aim, don't fight it) instead of fill.
+  const intentMet = maxFill <= 1e-6;
   const scored = raw.map((s) => {
-    const fillN = maxFill > 0 ? s.fill / maxFill : 0;
+    const fillN = intentMet
+      ? maxAligned > 0
+        ? s.aligned / maxAligned
+        : 0
+      : maxFill > 0
+        ? s.fill / maxFill
+        : 0;
     const affN = maxAff > 0 ? s.aff / maxAff : 0;
     const conN = maxCon > 0 ? s.con / maxCon : 0;
     const structN = maxStruct > 0 ? s.structure / maxStruct : 0;
@@ -424,19 +462,21 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     return { ...s, fillN, affN, conN, structN, score: base * (0.45 + 0.55 * s.riskMatch) };
   });
 
-  // A candidate earns a slot by filling a flavor gap, pairing, adding a missing
-  // contrast, or doing a structural job the direction leans on.
+  // A candidate earns a slot by filling a flavor gap, reinforcing a met intent,
+  // pairing, adding a missing contrast, or doing a structural job the direction leans on.
   const useful = scored
-    .filter((s) => s.fill > 0.02 || s.aff > 0 || s.con > 0 || s.structure > 0)
+    .filter((s) => s.fill > 0.02 || (intentMet && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
     .sort((a, b) => b.score - a.score);
   const count = Math.max(3, Math.min(suggestionCount, pool.length));
   const sel = useful.slice(0, count);
 
-  // Always include at least one off-script (high-novelty) pick.
+  // Always include at least one off-script (high-novelty) pick — the best-scoring
+  // one, so even the bold pick stays coherent with the board (not an arbitrary
+  // high-novelty item when there's no flavor gap to rank by).
   if (!sel.some((s) => s.ing.novelty >= 0.6)) {
     const off = scored
       .filter((s) => s.ing.novelty >= 0.6)
-      .sort((a, b) => b.fill - a.fill)[0];
+      .sort((a, b) => b.score - a.score)[0];
     if (off) {
       if (sel.length >= count) sel[sel.length - 1] = off;
       else sel.push(off);
@@ -457,7 +497,7 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   if (sel.length < count) {
     const extra = scored
       .filter((s) => sel.indexOf(s) === -1)
-      .sort((a, b) => b.fill - a.fill);
+      .sort((a, b) => b.score - a.score);
     while (sel.length < count && extra.length) sel.push(extra.shift()!);
   }
 

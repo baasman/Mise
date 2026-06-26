@@ -89,6 +89,39 @@ describe("getSuggestions", () => {
   });
 });
 
+describe("getSuggestions on a met intent", () => {
+  it("reinforces the aim, not off-character axes, once the board has met the intent", () => {
+    const umami = INTENTS.find((i) => i.id === "umami_rich")!;
+    // A developed board already saturated in umami/salt/fat (and carrying some
+    // sweet, the way a hash does) — the intent is met, so there's no gap to fill.
+    const board = [
+      ing("b1", { umami: 0.8, salt: 0.6, fat: 0.5 }, ["savory"]),
+      ing("b2", { umami: 0.8, salt: 0.6, fat: 0.5 }, ["savory"]),
+      ing("b3", { umami: 0.7, salt: 0.5, sweet: 0.4 }, ["caramel"]),
+      ing("b4", { umami: 0.7, fat: 0.6 }, ["nutty"]),
+      ing("b5", { umami: 0.6, salt: 0.4 }, ["earthy"]),
+    ];
+    const deepener = ing("deepener", { umami: 0.9, salt: 0.6 }, ["savory", "umami"], 0.4);
+    const offchar = ing("offchar", { sweet: 0.85, bitter: 0.6 }, ["chocolate", "earthy"], 0.85);
+    const pool = [...board, deepener, offchar];
+    const committed = board.map((b, i) => row(i + 1, b.id, "dominant"));
+    const sugg = getSuggestions({
+      committed,
+      byId: poolById(pool),
+      pool,
+      intent: umami,
+      risk: 0.7, // adventurous — the dial that surfaced the strange picks
+      suggestionCount: 5,
+      activeCompName: "the dish",
+    });
+    const ids = sugg.map((s) => s.id);
+    // the umami deepener outranks the off-character sweet/bitter item…
+    expect(ids.indexOf("deepener")).toBeLessThan(ids.indexOf("offchar"));
+    // …and the off-character item is never the top suggestion.
+    expect(ids[0]).not.toBe("offchar");
+  });
+});
+
 describe("buildFlags", () => {
   it("produces intent-only observations, max two, respecting dismissals", () => {
     const intent = INTENTS.find((i) => i.id === "rich_comforting")!;
