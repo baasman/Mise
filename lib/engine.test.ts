@@ -122,6 +122,37 @@ describe("getSuggestions on a met intent", () => {
   });
 });
 
+describe("getSuggestions diversity", () => {
+  it("caps how many same-dominant-axis picks surface when other families are available", () => {
+    const rich = INTENTS.find((i) => i.id === "rich_comforting")!;
+    const pool = [
+      ...Array.from({ length: 6 }, (_, i) => ing(`oil${i}`, { fat: 0.95 }, [`o${i}`], 0.2)),
+      ing("c_sour", { sour: 0.8 }, ["tangy"], 0.2),
+      ing("c_umami", { umami: 0.8 }, ["savory"], 0.2),
+      ing("c_salt", { salt: 0.8 }, ["briny"], 0.2),
+      ing("c_sweet", { sweet: 0.8 }, ["candied"], 0.2),
+      ing("c_heat", { heat: 0.8 }, ["fiery"], 0.2),
+      ing("c_bitter", { bitter: 0.8 }, ["bitterherb"], 0.2),
+      ing("board_fat", { fat: 0.6, umami: 0.6 }, ["rich"]),
+    ];
+    const sugg = getSuggestions({
+      committed: [row(1, "board_fat")],
+      byId: poolById(pool),
+      pool,
+      intent: rich,
+      risk: 0.3,
+      suggestionCount: 8,
+      activeCompName: "the dish",
+    });
+    const fatPicks = sugg.filter((s) => (pool.find((p) => p.id === s.id)!.axes.fat || 0) >= 0.9).length;
+    // 6 interchangeable oils are available, but the fat family is capped at 2.
+    expect(fatPicks).toBeLessThanOrEqual(2);
+    // and the list still reaches across other families.
+    expect(new Set(sugg.map((s) => s.id)).size).toBe(sugg.length);
+    expect(sugg.length).toBeGreaterThanOrEqual(6);
+  });
+});
+
 describe("buildFlags", () => {
   it("produces intent-only observations, max two, respecting dismissals", () => {
     const intent = INTENTS.find((i) => i.id === "rich_comforting")!;

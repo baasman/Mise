@@ -349,10 +349,17 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null } = input;
   const disp = axisDisplay(committed, byId);
   const low = intentGap(committed, byId, intent);
+  // How much gap is actually left to chase. Fill is normalized (best candidate → 1),
+  // which would turn even a 0.03 sliver into a full-strength signal — so a barely-unmet
+  // dish would still chase that axis hard (e.g. pile on oils to "finish" the fat). Scale
+  // the fill spine by the real gap size: as the aim is met, fill fades and ranking leans
+  // on reinforcing the dish's character + contrast instead.
+  const GAP_REF = 0.6;
+  const totalGap = AXES.reduce((s, k) => s + low[k], 0);
+  const gapStrength = Math.min(1, totalGap / GAP_REF);
   // Reinforcement (strength on the intent's named axes) and off-aim push (raising
-  // an axis already past what the aim wants). Used as the ranking spine only when
-  // the board has met the intent and the flavor gap has collapsed — so an already
-  // on-aim dish gets coherent "deepen it" picks, not novelty noise that fights it.
+  // an axis already past what the aim wants). Becomes the ranking spine as the flavor
+  // gap fades — so an on-aim dish gets coherent "deepen the character" picks.
   const tgt = intent.targets;
   const reinforceOf = (ing: Ingredient) =>
     AXES.reduce((sum, k) => sum + (ing.axes[k] || 0) * (tgt[k] != null ? (tgt[k] as number) : 0), 0);
@@ -444,17 +451,13 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const maxCon = raw.reduce((m, s) => Math.max(m, s.con), 0);
   const maxStruct = raw.reduce((m, s) => Math.max(m, s.structure), 0);
   const maxAligned = raw.reduce((m, s) => Math.max(m, s.aligned), 0);
-  // The intent has been met when nothing on the board has a flavor gap left to fill.
-  // Then the spine becomes alignment (deepen the aim, don't fight it) instead of fill.
-  const intentMet = maxFill <= 1e-6;
+  // The spine blends gap-fill → alignment as the intent is met: a wide-open board
+  // chases the flavor gap; an on-aim board reinforces its character instead of
+  // hammering a near-closed axis.
   const scored = raw.map((s) => {
-    const fillN = intentMet
-      ? maxAligned > 0
-        ? s.aligned / maxAligned
-        : 0
-      : maxFill > 0
-        ? s.fill / maxFill
-        : 0;
+    const spineFill = maxFill > 0 ? s.fill / maxFill : 0;
+    const spineAlign = maxAligned > 0 ? s.aligned / maxAligned : 0;
+    const fillN = gapStrength * spineFill + (1 - gapStrength) * spineAlign;
     const affN = maxAff > 0 ? s.aff / maxAff : 0;
     const conN = maxCon > 0 ? s.con / maxCon : 0;
     const structN = maxStruct > 0 ? s.structure / maxStruct : 0;
@@ -462,13 +465,47 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     return { ...s, fillN, affN, conN, structN, score: base * (0.45 + 0.55 * s.riskMatch) };
   });
 
-  // A candidate earns a slot by filling a flavor gap, reinforcing a met intent,
+  // A candidate earns a slot by filling a flavor gap, reinforcing the character,
   // pairing, adding a missing contrast, or doing a structural job the direction leans on.
   const useful = scored
-    .filter((s) => s.fill > 0.02 || (intentMet && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
+    .filter((s) => s.fill > 0.02 || (gapStrength < 1 && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
     .sort((a, b) => b.score - a.score);
   const count = Math.max(3, Math.min(suggestionCount, pool.length));
-  const sel = useful.slice(0, count);
+
+  // Diversity: don't let one "move" flood the list. Group candidates by their
+  // dominant axis (oils → fat, vinegars → sour, …) and take at most a couple per
+  // group before moving on, so the cook sees a range of ideas (a fat, an acid, a
+  // fresh thing, an umami hit) instead of eight interchangeable oils. The cap
+  // relaxes only if there aren't enough distinct groups to fill the list.
+  const FAMILY_CAP = Math.max(2, Math.ceil(count / 4));
+  const famOf = (ing: Ingredient): Axis => {
+    let best: Axis = AXES[0];
+    let bv = -Infinity;
+    AXES.forEach((k) => {
+      const v = ing.axes[k] || 0;
+      if (v > bv) {
+        bv = v;
+        best = k;
+      }
+    });
+    return best;
+  };
+  const famCount = new Map<Axis, number>();
+  const sel: typeof useful = [];
+  for (const s of useful) {
+    if (sel.length >= count) break;
+    const fam = famOf(s.ing);
+    if ((famCount.get(fam) || 0) >= FAMILY_CAP) continue;
+    sel.push(s);
+    famCount.set(fam, (famCount.get(fam) || 0) + 1);
+  }
+  // Top up by score if the diversity cap left us short of the requested count.
+  if (sel.length < count) {
+    for (const s of useful) {
+      if (sel.length >= count) break;
+      if (!sel.includes(s)) sel.push(s);
+    }
+  }
 
   // Always include at least one off-script (high-novelty) pick — the best-scoring
   // one, so even the bold pick stays coherent with the board (not an arbitrary
