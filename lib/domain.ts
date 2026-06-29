@@ -3,6 +3,8 @@
 // prototype exactly. Role *labels* are job-words deliberately distinct from the
 // taste-axis names (so "role = job" and "axis = taste" never collide).
 
+import type { Kind } from "./categories";
+
 export type Axis = "salt" | "sweet" | "sour" | "bitter" | "umami" | "fat" | "heat";
 export type Magnitude = "trace" | "supporting" | "dominant";
 export type Provenance = "estimate" | "your read" | "unprofiled";
@@ -220,10 +222,12 @@ export interface Reach {
   family?: TextureFamily;
   cold?: boolean;
   penalizeFat?: boolean;
-  bareWhy: string; // "why" when the match is axis/texture-only (no aroma names to cite)
+  kinds?: Kind[]; // food-groups that satisfy this reach (component reaches, not flavor)
+  bareWhy: string; // "why" when the match is axis/texture/kind-only (no aroma names to cite)
 }
 
 export const REACHES: Reach[] = [
+  // Flavor reaches — point at a taste/character move.
   { id: "acid", label: "Acid", axes: { sour: 1 }, aromas: ["citrus", "lemon", "lime", "tangy", "bright", "vinegar", "sour", "tart", "zesty", "pickled", "fermented"], bareWhy: "A bright, tangy lift, the way you're reaching." },
   { id: "green", label: "Green", axes: {}, aromas: ["grassy", "vegetal", "herbal", "green", "fresh", "leafy", "herbaceous", "pea", "cucumber", "verdant"], penalizeFat: true, bareWhy: "A fresh, green note, the way you're reaching." },
   { id: "crunch", label: "Crunch", axes: {}, aromas: [], family: "crunch", bareWhy: "A crisp, crunchy bite, the way you're reaching." },
@@ -231,4 +235,9 @@ export const REACHES: Reach[] = [
   { id: "heat", label: "Heat", axes: { heat: 1 }, aromas: ["spicy", "peppery", "chili", "pungent", "fiery", "hot", "warming"], bareWhy: "The heat you're reaching for." },
   { id: "rich", label: "Rich", axes: { fat: 1 }, aromas: ["buttery", "creamy", "nutty", "oily", "unctuous", "rich"], bareWhy: "The rounder richness you're reaching for." },
   { id: "fresh", label: "Fresh", axes: {}, aromas: ["fresh", "cool", "clean", "crisp", "bright", "mineral"], family: "fresh", cold: true, penalizeFat: true, bareWhy: "Something cool and fresh, the way you're reaching." },
+  // Component reaches — point at a food-group the dish is missing. These are
+  // flavor-quiet bodies the radar-driven ranking would never surface on its own.
+  { id: "veg", label: "Veg", axes: {}, aromas: [], kinds: ["vegetable"], bareWhy: "A vegetable to build the dish out." },
+  { id: "protein", label: "Protein", axes: {}, aromas: [], kinds: ["protein"], bareWhy: "A protein to anchor the dish." },
+  { id: "starch", label: "Starch", axes: {}, aromas: [], kinds: ["grain"], bareWhy: "A starch to give the dish body." },
 ];

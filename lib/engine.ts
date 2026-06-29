@@ -24,6 +24,7 @@ import {
   type Texture,
   type TextureFamily,
 } from "./domain";
+import { kindOf } from "./categories";
 import type { CommittedRow, Flag, Ingredient, Suggestion } from "./types";
 
 export type ById = (id: string) => Ingredient | undefined;
@@ -366,6 +367,9 @@ export function reachScore(ing: Ingredient, reach: Reach): { score: number; matc
   if (reach.family && TEXTURE_FAMILY[ing.texture] === reach.family) s += 0.8;
   if (reach.cold && ing.temperature === "cold") s += 0.5;
   if (reach.penalizeFat) s -= (ing.axes.fat || 0) * 0.5;
+  // Component reach: match by food-group ("I need a veg"). Dominant, since the
+  // whole point is to surface flavor-quiet bodies the flavor ranking ignores.
+  if (reach.kinds && reach.kinds.includes(kindOf(ing.name))) s += 1.5;
   return { score: Math.max(0, s), matched };
 }
 
@@ -601,8 +605,14 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     }
     const affinityLed = !reachLed && !contrastLed && !structureLed && s.affN > s.fillN && s.shared.length > 0;
     let why: string;
-    if (reachLed && reach) why = reachWhy(reach, s.reachMatched);
-    else if (contrastLed) why = s.contrast;
+    if (reachLed && reach) {
+      // For a component reach (veg/protein/starch), say how it fits the board if it
+      // shares notes; otherwise the plain "a vegetable to build it out" line.
+      why =
+        reach.kinds && reach.kinds.length && s.shared.length
+          ? `Plays off the ${s.shared.slice(0, 2).join(", ")} notes already on the board.`
+          : reachWhy(reach, s.reachMatched);
+    } else if (contrastLed) why = s.contrast;
     else if (structureLed) why = s.structureNote;
     else why = buildWhy(s.ing, low, s.shared, affinityLed);
     return {

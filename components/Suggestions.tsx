@@ -37,29 +37,33 @@ export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Recor
         <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
           Reaching for
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {REACHES.map((r) => {
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+          {REACHES.map((r, i) => {
             const active = state.reachId === r.id;
+            // a thin divider where the flavor reaches give way to the component ones
+            const startsComponents = !!r.kinds && !REACHES[i - 1]?.kinds;
             return (
-              <button
-                key={r.id}
-                onClick={() => m.setReach(r.id)}
-                className="swapbtn"
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 10.5,
-                  letterSpacing: ".4px",
-                  padding: "5px 11px",
-                  borderRadius: 999,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
-                  background: active ? "var(--accent)" : "var(--card)",
-                  color: active ? "#fff" : "var(--muted)",
-                }}
-              >
-                {r.label}
-              </button>
+              <span key={r.id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {startsComponents && <span aria-hidden style={{ width: 1, height: 16, background: "var(--line)", margin: "0 2px" }} />}
+                <button
+                  onClick={() => m.setReach(r.id)}
+                  className="swapbtn"
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 10.5,
+                    letterSpacing: ".4px",
+                    padding: "5px 11px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    background: active ? "var(--accent)" : "var(--card)",
+                    color: active ? "#fff" : "var(--muted)",
+                  }}
+                >
+                  {r.label}
+                </button>
+              </span>
             );
           })}
         </div>
