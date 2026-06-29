@@ -112,13 +112,41 @@ const initialState: MiseState = {
 
 type Updater = Partial<MiseState> | ((s: MiseState) => Partial<MiseState>);
 
+// Auto-saved working draft (device-local) so an in-progress dish survives a page
+// refresh. Only these fields are persisted — transient UI (modals, drag, search,
+// toast) is not. Bump the key if the shape changes incompatibly.
+const DRAFT_KEY = "mise_draft_v1";
+const DRAFT_FIELDS: (keyof MiseState)[] = [
+  "dishName", "intentId", "customIntent", "formId", "customForm", "components",
+  "committed", "customIngredients", "activeComp", "risk", "method", "servings",
+  "cid", "uid", "custId", "dismissed", "suggestionCount",
+];
+
+function readDraft(): Partial<MiseState> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const picked: Record<string, unknown> = {};
+    DRAFT_FIELDS.forEach((k) => {
+      if (k in parsed) picked[k] = parsed[k];
+    });
+    return picked as Partial<MiseState>;
+  } catch {
+    return null;
+  }
+}
+
 export function useMise() {
   const [state, setState] = useState<MiseState>(initialState);
   const [pantry, setPantry] = useState<Ingredient[]>(PANTRY as Ingredient[]);
+  const [hydrated, setHydrated] = useState(false);
   const stateRef = useRef(state);
   stateRef.current = state;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDraft = useRef<string>("");
 
   const set = useCallback((u: Updater) => {
     setState((s) => ({ ...s, ...(typeof u === "function" ? u(s) : u) }));
@@ -147,6 +175,39 @@ export function useMise() {
       .then((d) => set({ saved: d }))
       .catch(() => {});
   }, [set]);
+
+  // Restore the auto-saved working draft (once, on mount) so a refresh doesn't
+  // lose an in-progress dish. `hydrated` gates the persist effect below so the
+  // initial blank render can't clobber the stored draft before this runs.
+  useEffect(() => {
+    const d = readDraft();
+    if (d) {
+      if (Array.isArray(d.customIngredients)) {
+        d.customIngredients = d.customIngredients.map((ci) => ({ ...ci, estimating: false }));
+      }
+      const meaningful = (d.committed && d.committed.length) || d.dishName || d.method;
+      if (meaningful) set(d);
+    }
+    setHydrated(true);
+  }, [set]);
+
+  // Auto-save the working draft (debounced) whenever the persisted fields change.
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    const draft: Record<string, unknown> = {};
+    DRAFT_FIELDS.forEach((k) => (draft[k] = state[k]));
+    const ser = JSON.stringify(draft);
+    if (ser === lastDraft.current) return; // a transient (modal/drag/toast) change — skip
+    lastDraft.current = ser;
+    const t = setTimeout(() => {
+      try {
+        window.localStorage.setItem(DRAFT_KEY, ser);
+      } catch {
+        /* quota / private mode — drafts are best-effort */
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [hydrated, state]);
 
   const byId = useCallback(
     (id: string): Ingredient | undefined =>
