@@ -3,10 +3,12 @@
 // deterministic (engine); the one-line "why" may be replaced by a Claude-written
 // version passed in via whyOverrides, falling back to the local buildWhy string.
 import { getSuggestions, riskDialLabel } from "@/lib/engine";
+import { REACHES } from "@/lib/domain";
 import type { Mise } from "./useMise";
 
 export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Record<string, string> }) {
   const { state, byId, pantry } = m;
+  const activeReach = m.reach();
   const suggestions = getSuggestions({
     committed: state.committed,
     byId,
@@ -16,6 +18,7 @@ export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Recor
     suggestionCount: state.suggestionCount,
     activeCompName: m.activeCompName(),
     form: m.form(),
+    reach: activeReach,
   });
 
   return (
@@ -24,7 +27,42 @@ export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Recor
         Suggestions
       </div>
       <div style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", marginTop: 6 }}>
-        Ideas for what the board&rsquo;s low on — each with a reason.
+        {activeReach
+          ? `Steering toward ${activeReach.label.toLowerCase()} — tap the chip again to release.`
+          : "Ideas for what the board’s low on — each with a reason."}
+      </div>
+
+      {/* "Reaching for…" — point the suggestions at a move you have in mind. */}
+      <div style={{ margin: "14px 0 0" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
+          Reaching for
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {REACHES.map((r) => {
+            const active = state.reachId === r.id;
+            return (
+              <button
+                key={r.id}
+                onClick={() => m.setReach(r.id)}
+                className="swapbtn"
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 10.5,
+                  letterSpacing: ".4px",
+                  padding: "5px 11px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
+                  background: active ? "var(--accent)" : "var(--card)",
+                  color: active ? "#fff" : "var(--muted)",
+                }}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ background: "var(--card)", border: "1px solid var(--line-soft)", borderRadius: 10, padding: "14px 16px", margin: "16px 0 18px" }}>

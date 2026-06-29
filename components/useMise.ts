@@ -8,12 +8,14 @@ import {
   FORMS,
   INTENTS,
   PANTRY,
+  REACHES,
   ZERO_AXES,
   type AxisMap,
   type Axis,
   type Form,
   type Intent,
   type Magnitude,
+  type Reach,
   type Role,
   type Temperature,
   type Texture,
@@ -66,6 +68,7 @@ export interface MiseState {
   suggestionCount: number;
   pantryLoaded: boolean;
   toast: string | null;
+  reachId: string | null;
 }
 
 const initialState: MiseState = {
@@ -108,6 +111,7 @@ const initialState: MiseState = {
   suggestionCount: 12,
   pantryLoaded: false,
   toast: null,
+  reachId: null,
 };
 
 type Updater = Partial<MiseState> | ((s: MiseState) => Partial<MiseState>);
@@ -225,6 +229,9 @@ export function useMise() {
     if (state.formId === "custom") return state.customForm;
     return FORMS.find((f) => f.id === state.formId) || null;
   }, [state.formId, state.customForm]);
+  const reach = useCallback((): Reach | null => REACHES.find((r) => r.id === state.reachId) || null, [state.reachId]);
+  // Toggle a "reaching for…" lens: tapping the active chip releases it.
+  const setReach = useCallback((id: string) => set((s) => ({ reachId: s.reachId === id ? null : id })), [set]);
 
   const activeCompName = useCallback(() => {
     const c = state.components.find((x) => x.id === state.activeComp);
@@ -722,6 +729,8 @@ export function useMise() {
     byId,
     intent,
     form,
+    reach,
+    setReach,
     activeCompName,
     rowAxesOf,
     rowAromasOf,

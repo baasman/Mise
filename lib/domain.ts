@@ -207,3 +207,28 @@ export const FORMS: Form[] = [
 ];
 
 export const ZERO_AXES: AxisMap = { salt: 0, sweet: 0, sour: 0, bitter: 0, umami: 0, fat: 0, heat: 0 };
+
+// A "reaching for…" lens the cook can point the suggestions at — "I need a green /
+// an acid / a crunch". Each maps to the data we already have: axes to reward, aroma
+// keywords to match, an optional texture family / cold preference, and whether to
+// dock fatty things (a green or fresh reach shouldn't surface oils). Deterministic.
+export interface Reach {
+  id: string;
+  label: string;
+  axes: Partial<AxisMap>;
+  aromas: string[];
+  family?: TextureFamily;
+  cold?: boolean;
+  penalizeFat?: boolean;
+  bareWhy: string; // "why" when the match is axis/texture-only (no aroma names to cite)
+}
+
+export const REACHES: Reach[] = [
+  { id: "acid", label: "Acid", axes: { sour: 1 }, aromas: ["citrus", "lemon", "lime", "tangy", "bright", "vinegar", "sour", "tart", "zesty", "pickled", "fermented"], bareWhy: "A bright, tangy lift, the way you're reaching." },
+  { id: "green", label: "Green", axes: {}, aromas: ["grassy", "vegetal", "herbal", "green", "fresh", "leafy", "herbaceous", "pea", "cucumber", "verdant"], penalizeFat: true, bareWhy: "A fresh, green note, the way you're reaching." },
+  { id: "crunch", label: "Crunch", axes: {}, aromas: [], family: "crunch", bareWhy: "A crisp, crunchy bite, the way you're reaching." },
+  { id: "herb", label: "Herb", axes: {}, aromas: ["herbal", "herbaceous", "aromatic", "minty", "mint", "basil", "parsley", "cilantro", "coriander", "dill", "thyme", "oregano", "sage", "rosemary", "floral", "piney"], bareWhy: "A fresh herbal note, the way you're reaching." },
+  { id: "heat", label: "Heat", axes: { heat: 1 }, aromas: ["spicy", "peppery", "chili", "pungent", "fiery", "hot", "warming"], bareWhy: "The heat you're reaching for." },
+  { id: "rich", label: "Rich", axes: { fat: 1 }, aromas: ["buttery", "creamy", "nutty", "oily", "unctuous", "rich"], bareWhy: "The rounder richness you're reaching for." },
+  { id: "fresh", label: "Fresh", axes: {}, aromas: ["fresh", "cool", "clean", "crisp", "bright", "mineral"], family: "fresh", cold: true, penalizeFat: true, bareWhy: "Something cool and fresh, the way you're reaching." },
+];

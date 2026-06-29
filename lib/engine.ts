@@ -18,6 +18,7 @@ import {
   type Form,
   type Intent,
   type Magnitude,
+  type Reach,
   type Role,
   type Temperature,
   type Texture,
@@ -341,12 +342,44 @@ export interface SuggestionInput {
   suggestionCount: number;
   activeCompName: string;
   form?: Form | null; // the chosen direction; biases toward roles it leans on
+  reach?: Reach | null; // a "reaching for…" lens the cook is steering toward
+}
+
+// How well a candidate satisfies a "reaching for…" lens: axis strength + matching
+// aroma tags + texture family + cold, docking fatty things for green/fresh reaches.
+// Returns the score and which aroma tags matched (to name in the "why").
+const W_REACH = 0.7;
+export function reachScore(ing: Ingredient, reach: Reach): { score: number; matched: string[] } {
+  let s = 0;
+  AXES.forEach((k) => {
+    const w = reach.axes[k];
+    if (w) s += (ing.axes[k] || 0) * w;
+  });
+  const matched: string[] = [];
+  ing.aromas.forEach((a) => {
+    const al = a.toLowerCase();
+    if (reach.aromas.some((t) => al.includes(t) || t.includes(al))) {
+      s += 0.6;
+      matched.push(a);
+    }
+  });
+  if (reach.family && TEXTURE_FAMILY[ing.texture] === reach.family) s += 0.8;
+  if (reach.cold && ing.temperature === "cold") s += 0.5;
+  if (reach.penalizeFat) s -= (ing.axes.fat || 0) * 0.5;
+  return { score: Math.max(0, s), matched };
+}
+
+function reachWhy(reach: Reach, matched: string[]): string {
+  // Drop a matched tag that just repeats the reach label (e.g. "green … green").
+  const tags = matched.filter((t) => t.toLowerCase() !== reach.label.toLowerCase()).slice(0, 2);
+  if (tags.length) return `Brings the ${tags.join(", ")} ${reach.label.toLowerCase()} you're after.`;
+  return reach.bareWhy;
 }
 
 // Flavor-gap ranking against the intent + risk-dial novelty match, guaranteeing
 // at least one off-script pick. Returns ranked candidates with a local "why".
 export function getSuggestions(input: SuggestionInput): Suggestion[] {
-  const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null } = input;
+  const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null, reach = null } = input;
   const disp = axisDisplay(committed, byId);
   const low = intentGap(committed, byId, intent);
   // How much gap is actually left to chase. Fill is normalized (best candidate → 1),
@@ -441,7 +474,8 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
       });
     }
     const aligned = Math.max(0, reinforceOf(ing) - offAimOf(ing));
-    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, aligned, riskMatch: 1 - Math.abs(ing.novelty - risk) };
+    const rs = reach ? reachScore(ing, reach) : { score: 0, matched: [] as string[] };
+    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, aligned, reachM: rs.score, reachMatched: rs.matched, riskMatch: 1 - Math.abs(ing.novelty - risk) };
   });
 
   // Normalize each signal across the candidate set so affinity and contrast genuinely
@@ -451,9 +485,11 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const maxCon = raw.reduce((m, s) => Math.max(m, s.con), 0);
   const maxStruct = raw.reduce((m, s) => Math.max(m, s.structure), 0);
   const maxAligned = raw.reduce((m, s) => Math.max(m, s.aligned), 0);
+  const maxReach = raw.reduce((m, s) => Math.max(m, s.reachM), 0);
   // The spine blends gap-fill → alignment as the intent is met: a wide-open board
   // chases the flavor gap; an on-aim board reinforces its character instead of
-  // hammering a near-closed axis.
+  // hammering a near-closed axis. When the cook is steering a "reaching for…" lens,
+  // that match dominates (still tempered by board-fit), so the chosen reach leads.
   const scored = raw.map((s) => {
     const spineFill = maxFill > 0 ? s.fill / maxFill : 0;
     const spineAlign = maxAligned > 0 ? s.aligned / maxAligned : 0;
@@ -462,61 +498,71 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     const conN = maxCon > 0 ? s.con / maxCon : 0;
     const structN = maxStruct > 0 ? s.structure / maxStruct : 0;
     const base = W_FILL * fillN + W_AFFINITY * affN + W_CONTRAST * conN + W_STRUCTURE * structN;
-    return { ...s, fillN, affN, conN, structN, score: base * (0.45 + 0.55 * s.riskMatch) };
+    const reachN = maxReach > 0 ? s.reachM / maxReach : 0;
+    const blended = reach ? W_REACH * reachN + (1 - W_REACH) * base : base;
+    return { ...s, fillN, affN, conN, structN, reachN, score: blended * (0.45 + 0.55 * s.riskMatch) };
   });
 
-  // A candidate earns a slot by filling a flavor gap, reinforcing the character,
-  // pairing, adding a missing contrast, or doing a structural job the direction leans on.
+  // A candidate earns a slot by matching the cook's reach, filling a flavor gap,
+  // reinforcing the character, pairing, adding a missing contrast, or doing a
+  // structural job the direction leans on.
   const useful = scored
-    .filter((s) => s.fill > 0.02 || (gapStrength < 1 && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
+    .filter((s) => (reach ? s.reachM > 0 : false) || s.fill > 0.02 || (gapStrength < 1 && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
     .sort((a, b) => b.score - a.score);
   const count = Math.max(3, Math.min(suggestionCount, pool.length));
 
-  // Diversity: don't let one "move" flood the list. Group candidates by their
-  // dominant axis (oils → fat, vinegars → sour, …) and take at most a couple per
-  // group before moving on, so the cook sees a range of ideas (a fat, an acid, a
-  // fresh thing, an umami hit) instead of eight interchangeable oils. The cap
-  // relaxes only if there aren't enough distinct groups to fill the list.
-  const FAMILY_CAP = Math.max(2, Math.ceil(count / 4));
-  const famOf = (ing: Ingredient): Axis => {
-    let best: Axis = AXES[0];
-    let bv = -Infinity;
-    AXES.forEach((k) => {
-      const v = ing.axes[k] || 0;
-      if (v > bv) {
-        bv = v;
-        best = k;
-      }
-    });
-    return best;
-  };
-  const famCount = new Map<Axis, number>();
-  const sel: typeof useful = [];
-  for (const s of useful) {
-    if (sel.length >= count) break;
-    const fam = famOf(s.ing);
-    if ((famCount.get(fam) || 0) >= FAMILY_CAP) continue;
-    sel.push(s);
-    famCount.set(fam, (famCount.get(fam) || 0) + 1);
-  }
-  // Top up by score if the diversity cap left us short of the requested count.
-  if (sel.length < count) {
+  let sel: typeof useful;
+  if (reach) {
+    // Steering a reach: the cook wants several of THIS thing, so skip the diversity
+    // cap and the off-script/structure guarantees — the reach is the whole point.
+    sel = useful.slice(0, count);
+  } else {
+    // Diversity: don't let one "move" flood the list. Group candidates by their
+    // dominant axis (oils → fat, vinegars → sour, …) and take at most a couple per
+    // group before moving on, so the cook sees a range of ideas (a fat, an acid, a
+    // fresh thing, an umami hit) instead of eight interchangeable oils. The cap
+    // relaxes only if there aren't enough distinct groups to fill the list.
+    const FAMILY_CAP = Math.max(2, Math.ceil(count / 4));
+    const famOf = (ing: Ingredient): Axis => {
+      let best: Axis = AXES[0];
+      let bv = -Infinity;
+      AXES.forEach((k) => {
+        const v = ing.axes[k] || 0;
+        if (v > bv) {
+          bv = v;
+          best = k;
+        }
+      });
+      return best;
+    };
+    const famCount = new Map<Axis, number>();
+    sel = [];
     for (const s of useful) {
       if (sel.length >= count) break;
-      if (!sel.includes(s)) sel.push(s);
+      const fam = famOf(s.ing);
+      if ((famCount.get(fam) || 0) >= FAMILY_CAP) continue;
+      sel.push(s);
+      famCount.set(fam, (famCount.get(fam) || 0) + 1);
     }
-  }
+    // Top up by score if the diversity cap left us short of the requested count.
+    if (sel.length < count) {
+      for (const s of useful) {
+        if (sel.length >= count) break;
+        if (!sel.includes(s)) sel.push(s);
+      }
+    }
 
-  // Always include at least one off-script (high-novelty) pick — the best-scoring
-  // one, so even the bold pick stays coherent with the board (not an arbitrary
-  // high-novelty item when there's no flavor gap to rank by).
-  if (!sel.some((s) => s.ing.novelty >= 0.6)) {
-    const off = scored
-      .filter((s) => s.ing.novelty >= 0.6)
-      .sort((a, b) => b.score - a.score)[0];
-    if (off) {
-      if (sel.length >= count) sel[sel.length - 1] = off;
-      else sel.push(off);
+    // Always include at least one off-script (high-novelty) pick — the best-scoring
+    // one, so even the bold pick stays coherent with the board (not an arbitrary
+    // high-novelty item when there's no flavor gap to rank by).
+    if (!sel.some((s) => s.ing.novelty >= 0.6)) {
+      const off = scored
+        .filter((s) => s.ing.novelty >= 0.6)
+        .sort((a, b) => b.score - a.score)[0];
+      if (off) {
+        if (sel.length >= count) sel[sel.length - 1] = off;
+        else sel.push(off);
+      }
     }
   }
   // Surface the direction: ensure a pick that will actually read as structural (its
@@ -524,7 +570,7 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   // overridden by a contrast lead) is present — so the chosen direction visibly
   // contributes a "here's the acid/finish your pasta wants" idea.
   const showsStructure = (s: (typeof scored)[number]) => s.structurePrimary && s.con === 0;
-  if (form && !sel.some(showsStructure)) {
+  if (form && !reach && !sel.some(showsStructure)) {
     const best = scored.filter(showsStructure).sort((a, b) => b.score - a.score)[0];
     if (best) {
       if (sel.length >= count) sel[sel.length - 1] = best;
@@ -544,16 +590,19 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   let structLeads = 0;
   return sel.map((s) => {
     const meta = riskMeta(s.ing.novelty);
-    const contrastLed = s.conN > 0 && s.conN >= s.fillN && s.conN >= s.affN;
+    // The cook is steering toward this; lead with how the pick answers the reach.
+    const reachLed = !!reach && s.reachM > 0;
+    const contrastLed = !reachLed && s.conN > 0 && s.conN >= s.fillN && s.conN >= s.affN;
     let structureLed = false;
-    if (!contrastLed && s.structurePrimary && structLeads < 2 && !usedStructNotes.has(s.structureNote)) {
+    if (!reachLed && !contrastLed && s.structurePrimary && structLeads < 2 && !usedStructNotes.has(s.structureNote)) {
       structureLed = true;
       usedStructNotes.add(s.structureNote);
       structLeads++;
     }
-    const affinityLed = !contrastLed && !structureLed && s.affN > s.fillN && s.shared.length > 0;
+    const affinityLed = !reachLed && !contrastLed && !structureLed && s.affN > s.fillN && s.shared.length > 0;
     let why: string;
-    if (contrastLed) why = s.contrast;
+    if (reachLed && reach) why = reachWhy(reach, s.reachMatched);
+    else if (contrastLed) why = s.contrast;
     else if (structureLed) why = s.structureNote;
     else why = buildWhy(s.ing, low, s.shared, affinityLed);
     return {

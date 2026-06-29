@@ -38,6 +38,13 @@ export function MiseWorkspace() {
   // and silently keeps the local buildWhy string when the endpoint is absent.
   useEffect(() => {
     const intent = m.intent();
+    // When the cook is steering a "reaching for…" lens, the engine's reach-led "why"
+    // ("Brings the grassy, herbal green you're after") is the responsive answer —
+    // skip the Haiku pass so it isn't overwritten with a generic gap reason.
+    if (m.reach()) {
+      setWhyOverrides({});
+      return;
+    }
     const suggestions = getSuggestions({
       committed: state.committed,
       byId,
@@ -68,7 +75,7 @@ export function MiseWorkspace() {
       if (whyTimer.current) clearTimeout(whyTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.committed, state.intentId, state.risk, state.suggestionCount, state.dishName]);
+  }, [state.committed, state.intentId, state.risk, state.suggestionCount, state.dishName, state.reachId]);
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--sans)", color: "var(--ink)", background: "var(--canvas)" }}>
