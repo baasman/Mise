@@ -55,6 +55,13 @@ export function Board({ m }: { m: Mise }) {
           <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "#7c6f5c", marginTop: 9, maxWidth: 500 }}>
             The board reflects as you build; ideas wait on the right when you want them.
           </div>
+          <button
+            onClick={m.loadExample}
+            className="ghost"
+            style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 7, background: "transparent", border: "1px dashed #cdbfa6", borderRadius: 999, padding: "7px 15px", cursor: "pointer", color: "#9a8c77", fontSize: 12.5 }}
+          >
+            or load an example to see how it works <span style={{ color: "var(--accent)", fontSize: 13, lineHeight: 1 }}>&rarr;</span>
+          </button>
         </div>
       )}
 

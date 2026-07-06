@@ -22,6 +22,7 @@ import {
 } from "@/lib/domain";
 import { desiredVec, rowTemperature, rowTexture } from "@/lib/engine";
 import type { Component, CommittedRow, DishSnapshot, Ingredient } from "@/lib/types";
+import { EXAMPLE_DISH } from "@/lib/example-dish";
 import {
   deleteDish as apiDeleteDish,
   fetchDishes,
@@ -690,6 +691,33 @@ export function useMise() {
     flashToast("Fresh board");
   }, [set, flashToast]);
 
+  // ---- example dish ----
+  // Load the hand-authored example onto the (empty) board — a fixed editorial
+  // starting point that shows the whole loop, fully editable like anything else.
+  const loadExample = useCallback(() => {
+    const d: DishSnapshot = JSON.parse(JSON.stringify(EXAMPLE_DISH));
+    set({
+      dishName: d.name,
+      intentId: d.intentId ?? "bright_sharp",
+      customIntent: d.customIntent,
+      formId: d.formId,
+      customForm: d.customForm,
+      components: d.components,
+      committed: d.committed,
+      customIngredients: d.customIngredients,
+      activeComp: d.activeComp,
+      risk: d.risk,
+      method: d.method,
+      servings: d.servings,
+      cid: d.cid,
+      uid: d.uid,
+      custId: d.custId,
+      dismissed: [],
+      reachId: null,
+    });
+    flashToast("Example loaded — make it yours");
+  }, [set, flashToast]);
+
   // ---- saved library (server-backed) ----
   const snapshot = useCallback((): DishSnapshot => {
     const s = stateRef.current;
@@ -833,6 +861,7 @@ export function useMise() {
     loadSaved,
     deleteSaved,
     newDish,
+    loadExample,
   };
 }
 
