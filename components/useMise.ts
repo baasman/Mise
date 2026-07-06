@@ -384,6 +384,9 @@ export function useMise() {
         }));
       } else {
         addIngredient(id, "supporting", s.addTargetComp || undefined);
+        // Close on add — one pick, one click. The toast confirms what landed, and
+        // reopening (autofocused) is cheap, so multi-add barely costs more.
+        set({ pickerOpen: false, search: "" });
       }
     },
     [byId, addIngredient, set],
