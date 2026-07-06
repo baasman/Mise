@@ -2,7 +2,7 @@
 // CENTER zone — "the board": the dish is the hero. Form kicker, editable title,
 // dismissible intent flags, grouped components, form ghost-scaffolds, and the
 // overall method. The empty board states the anti-slop manifesto.
-import { axisDisplay, buildFlags, buildIntrinsicFlags } from "@/lib/engine";
+import { axisDisplay, buildFlags, buildIntrinsicFlags, buildRestraintFlags } from "@/lib/engine";
 import { ComponentCard } from "./ComponentCard";
 import type { Mise } from "./useMise";
 
@@ -13,10 +13,12 @@ export function Board({ m }: { m: Mise }) {
   const disp = axisDisplay(state.committed, byId);
   const n = state.committed.length;
   const boardEmpty = n === 0;
-  // Intent observations (vs. your aim) + intrinsic-balance observations (tensions
-  // a cook would notice regardless of aim). Both dismissible; capped together.
+  // Intent observations (vs. your aim), restraint observations (P3: focus —
+  // where the dish would gain from subtracting), and intrinsic-balance
+  // observations (tensions regardless of aim). All dismissible; capped together.
   const flags = [
     ...buildFlags(disp, intent, state.dismissed),
+    ...buildRestraintFlags(state.committed, byId, state.dismissed),
     ...buildIntrinsicFlags(disp, state.dismissed, n),
   ].slice(0, 3);
 
@@ -68,13 +70,14 @@ export function Board({ m }: { m: Mise }) {
       {flags.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "22px 0 4px" }}>
           {flags.map((flag) => {
-            const intrinsic = flag.kind === "intrinsic";
-            const accent = intrinsic ? "var(--accent)" : "var(--gold)";
+            const accent =
+              flag.kind === "intrinsic" ? "var(--accent)" : flag.kind === "restraint" ? "#7c5230" : "var(--gold)";
+            const label = flag.kind === "intrinsic" ? "Balance" : flag.kind === "restraint" ? "Focus" : "Intent";
             return (
               <div key={flag.id} style={{ background: "#f8eede", border: "1px solid #ecd6b8", borderLeft: `3px solid ${accent}`, borderRadius: 8, padding: "11px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
                   <span style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "1.6px", textTransform: "uppercase", color: accent }}>
-                    {intrinsic ? "Balance" : "Intent"}
+                    {label}
                   </span>
                   <button onClick={() => m.dismissFlag(flag.id)} className="ht" style={{ background: "transparent", border: "none", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1px", textTransform: "uppercase", color: "var(--muted-2)", cursor: "pointer", padding: 0 }}>
                     dismiss

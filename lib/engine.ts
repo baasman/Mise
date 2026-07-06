@@ -275,6 +275,85 @@ export function buildIntrinsicFlags(
   return out.filter((f) => !dismissed.includes(f.id)).slice(0, 2);
 }
 
+// Restraint flags (P3): every other mechanism nudges toward *adding*; chefs
+// subtract. These observe when a dish is losing focus — no hero, several
+// ingredients shouting the same taste, or too many dominants fighting to lead.
+// Board-specific and rare by design (a 20-ingredient dish with a clear hero is
+// fine); observations that name names, never commands. Dismissible, caps at two.
+const RESTRAINT = {
+  noHeroMin: 6, // ingredients before "nothing leads" is worth saying
+  crowdSize: 3, // non-trace ingredients on the same strongest axis
+  crowdAxisMin: 0.5, // …each at least this strong on it
+  heroesMax: 2, // dominants beyond this are fighting
+};
+
+export function buildRestraintFlags(
+  committed: CommittedRow[],
+  byId: ById,
+  dismissed: string[],
+): Flag[] {
+  const out: Flag[] = [];
+  const n = committed.length;
+  const dominants = committed.filter((c) => c.magnitude === "dominant");
+
+  // Nothing leads: a developed board where everything is merely supporting.
+  if (n >= RESTRAINT.noHeroMin && dominants.length === 0) {
+    out.push({
+      id: "restraint-no-hero",
+      kind: "restraint",
+      text: `${n} ingredients in and nothing leads. If one of them is the hero, make it dominant — and cut anything that doesn’t serve it.`,
+    });
+  }
+
+  // Too many heroes: several dominants all trying to lead.
+  if (dominants.length > RESTRAINT.heroesMax) {
+    out.push({
+      id: "restraint-many-heroes",
+      kind: "restraint",
+      text: `${dominants.length} dominants are all trying to lead. Most dishes carry one hero, maybe two.`,
+    });
+  }
+
+  // Crowded job: 3+ non-trace ingredients whose strongest axis is the same one.
+  // Only the single most crowded axis speaks, naming the ingredients.
+  const groups = new Map<Axis, string[]>();
+  committed.forEach((c) => {
+    if (c.magnitude === "trace") return;
+    const ax = c.axes ?? byId(c.ingredientId)?.axes;
+    const name = byId(c.ingredientId)?.name;
+    if (!ax || !name) return;
+    let best: Axis = AXES[0];
+    let bv = -Infinity;
+    AXES.forEach((k) => {
+      if ((ax[k] || 0) > bv) {
+        bv = ax[k] || 0;
+        best = k;
+      }
+    });
+    if (bv < RESTRAINT.crowdAxisMin) return;
+    const g = groups.get(best) || [];
+    g.push(name);
+    groups.set(best, g);
+  });
+  let crowd: { axis: Axis; names: string[] } | null = null;
+  groups.forEach((names, axis) => {
+    if (names.length >= RESTRAINT.crowdSize && (!crowd || names.length > crowd.names.length)) {
+      crowd = { axis, names };
+    }
+  });
+  if (crowd) {
+    const { axis, names } = crowd as { axis: Axis; names: string[] };
+    const listed = names.slice(0, 3).join(", ");
+    out.push({
+      id: "restraint-crowd-" + axis,
+      kind: "restraint",
+      text: `${listed} are all pushing ${AXIS_NAME[axis]}. One could carry it — consider tracing or cutting the others.`,
+    });
+  }
+
+  return out.filter((f) => !dismissed.includes(f.id)).slice(0, 2);
+}
+
 // Local "why" phrasing — the fallback when the Claude call is slow/unavailable.
 // `shared` are the board aroma tags this candidate echoes; when affinity is the
 // reason it's surfacing, lead with that pairing rather than a flavor-gap move.

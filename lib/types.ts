@@ -42,7 +42,7 @@ export interface CommittedRow {
 
 export interface Flag {
   id: string;
-  kind: "intent" | "intrinsic";
+  kind: "intent" | "intrinsic" | "restraint";
   text: string;
 }
 

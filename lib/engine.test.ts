@@ -11,7 +11,9 @@ import {
   riskDialLabel,
   textureFamilies,
   type ById,
+  buildRestraintFlags,
 } from "./engine";
+import { EXAMPLE_DISH } from "./example-dish";
 import type { Magnitude } from "./domain";
 import type { CommittedRow, Ingredient } from "./types";
 
@@ -190,6 +192,66 @@ describe("getSuggestions diversity", () => {
     // and the list still reaches across other families.
     expect(new Set(sugg.map((s) => s.id)).size).toBe(sugg.length);
     expect(sugg.length).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe("buildRestraintFlags (P3)", () => {
+  const bland = (id: string) => ing(id, { umami: 0.3 }, ["x"]);
+
+  it("no-hero: fires on a developed board with no dominant, clears once one leads", () => {
+    const pool = Array.from({ length: 6 }, (_, i) => bland(`b${i}`));
+    const committed = pool.map((p, i) => row(i + 1, p.id, "supporting"));
+    const flags = buildRestraintFlags(committed, poolById(pool), []);
+    expect(flags.map((f) => f.id)).toContain("restraint-no-hero");
+    flags.forEach((f) => expect(f.kind).toBe("restraint"));
+    const withHero = committed.map((c, i) => (i === 0 ? { ...c, magnitude: "dominant" as const } : c));
+    expect(buildRestraintFlags(withHero, poolById(pool), []).map((f) => f.id)).not.toContain("restraint-no-hero");
+  });
+
+  it("stays quiet on small boards (5 supporting ingredients is not a crisis)", () => {
+    const pool = Array.from({ length: 5 }, (_, i) => bland(`b${i}`));
+    const committed = pool.map((p, i) => row(i + 1, p.id, "supporting"));
+    expect(buildRestraintFlags(committed, poolById(pool), [])).toEqual([]);
+  });
+
+  it("many-heroes: three dominants fighting to lead", () => {
+    const pool = Array.from({ length: 3 }, (_, i) => bland(`b${i}`));
+    const committed = pool.map((p, i) => row(i + 1, p.id, "dominant"));
+    expect(buildRestraintFlags(committed, poolById(pool), []).map((f) => f.id)).toContain("restraint-many-heroes");
+  });
+
+  it("crowd: three non-trace salt-bombs get named; trace rows don't count", () => {
+    const pool = [
+      ing("anchovy2", { salt: 0.9, umami: 0.6 }, ["briny"]),
+      ing("cotija2", { salt: 0.8, umami: 0.4 }, ["salty"]),
+      ing("olives2", { salt: 0.85 }, ["briny"]),
+      ing("bland1", { sweet: 0.3 }, ["x"]),
+    ];
+    const committed = [
+      row(1, "anchovy2", "supporting"),
+      row(2, "cotija2", "supporting"),
+      row(3, "olives2", "supporting"),
+      row(4, "bland1", "supporting"),
+    ];
+    const flags = buildRestraintFlags(committed, poolById(pool), []);
+    const crowd = flags.find((f) => f.id === "restraint-crowd-salt");
+    expect(crowd).toBeTruthy();
+    expect(crowd!.text).toContain("anchovy2");
+    expect(crowd!.text).toContain("olives2");
+    // demote one to trace → only two shouting → silent
+    const traced = committed.map((c, i) => (i === 0 ? { ...c, magnitude: "trace" as const } : c));
+    expect(buildRestraintFlags(traced, poolById(pool), []).map((f) => f.id)).not.toContain("restraint-crowd-salt");
+  });
+
+  it("respects dismissals", () => {
+    const pool = Array.from({ length: 6 }, (_, i) => bland(`b${i}`));
+    const committed = pool.map((p, i) => row(i + 1, p.id, "supporting"));
+    expect(buildRestraintFlags(committed, poolById(pool), ["restraint-no-hero"])).toEqual([]);
+  });
+
+  it("the example dish stays flag-clean (anti-truism guard)", () => {
+    const pById: ById = (id) => (PANTRY as Ingredient[]).find((p) => p.id === id);
+    expect(buildRestraintFlags(EXAMPLE_DISH.committed, pById, [])).toEqual([]);
   });
 });
 
