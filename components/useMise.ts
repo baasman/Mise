@@ -652,6 +652,41 @@ export function useMise() {
   const openLibrary = useCallback(() => set({ libraryOpen: true }), [set]);
   const closeLibrary = useCallback(() => set({ libraryOpen: false }), [set]);
 
+  // ---- new dish ----
+  // Wipe the board back to a blank canvas and clear the auto-saved draft. The
+  // pantry, saved library, and dial-style preferences (suggestion count) stay.
+  const newDish = useCallback(() => {
+    set({
+      dishName: "",
+      intentId: "bright_sharp",
+      customIntent: null,
+      formId: null,
+      customForm: null,
+      components: [{ id: "c1", name: "", notes: "" }],
+      cid: 2,
+      activeComp: "c1",
+      addTargetComp: "c1",
+      committed: [],
+      uid: 1,
+      risk: 0.3,
+      dismissed: [],
+      customIngredients: [],
+      custId: 1,
+      method: "",
+      servings: 2,
+      reachId: null,
+      aromaDrafts: {},
+      expandedRow: null,
+      recipeOpen: false,
+    });
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* best-effort */
+    }
+    flashToast("Fresh board");
+  }, [set, flashToast]);
+
   // ---- saved library (server-backed) ----
   const snapshot = useCallback((): DishSnapshot => {
     const s = stateRef.current;
@@ -794,6 +829,7 @@ export function useMise() {
     saveCurrent,
     loadSaved,
     deleteSaved,
+    newDish,
   };
 }
 

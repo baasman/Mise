@@ -1,9 +1,27 @@
 "use client";
+import { useRef, useState } from "react";
 import type { Mise } from "./useMise";
 
 export function Header({ m }: { m: Mise }) {
   const { state } = m;
   const intentLabel = m.intent().label;
+
+  // "New" asks once before wiping a board with real work on it (two-tap confirm
+  // that quietly reverts) — a blank board just resets straight away.
+  const [confirmNew, setConfirmNew] = useState(false);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirty = state.committed.length > 0 || !!state.dishName.trim() || !!state.method.trim();
+  function onNew() {
+    if (dirty && !confirmNew) {
+      setConfirmNew(true);
+      if (confirmTimer.current) clearTimeout(confirmTimer.current);
+      confirmTimer.current = setTimeout(() => setConfirmNew(false), 2600);
+      return;
+    }
+    if (confirmTimer.current) clearTimeout(confirmTimer.current);
+    setConfirmNew(false);
+    m.newDish();
+  }
   return (
     <header
       style={{
@@ -26,6 +44,17 @@ export function Header({ m }: { m: Mise }) {
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          onClick={onNew}
+          title="Start a fresh dish (clears the board)"
+          className="hb"
+          style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--card)", border: confirmNew ? "1px solid var(--accent)" : "1px solid var(--line)", borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
+        >
+          <span style={{ fontSize: 13, lineHeight: 1, color: "var(--accent)" }}>+</span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.2px", textTransform: "uppercase", color: confirmNew ? "var(--accent)" : "#5c5246" }}>
+            {confirmNew ? "Start fresh?" : "New"}
+          </span>
+        </button>
         <button
           onClick={m.saveCurrent}
           title="Save this combination"
