@@ -1,0 +1,23 @@
+# Typecheck, test, and build on every push/PR. The build needs no database:
+# scripts/predeploy.ts only runs on Vercel, and `next build` works without
+# DATABASE_URL (all API routes are dynamic).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build

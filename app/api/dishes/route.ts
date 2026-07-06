@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDeviceId } from "@/lib/identity";
+import { MAX_DISH_BYTES, dishSnapshotSchema } from "@/lib/dish-schema";
 import type { DishSnapshot } from "@/lib/types";
 
 interface DishRow {
@@ -25,7 +26,24 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const deviceId = await getDeviceId();
-  const snap = (await req.json()) as DishSnapshot;
+
+  // The client is anonymous, so don't trust the body: cap the size, then
+  // validate the shape (bounded strings/arrays; unknown keys are stripped).
+  const raw = await req.text();
+  if (raw.length > MAX_DISH_BYTES) {
+    return NextResponse.json({ error: "dish too large" }, { status: 413 });
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "bad request" }, { status: 400 });
+  }
+  const parsed = dishSnapshotSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "bad request" }, { status: 400 });
+  }
+  const snap = parsed.data as DishSnapshot;
   const name = (snap.name || "").trim() || "Untitled dish";
 
   // Save-by-name upsert per device (mirrors the prototype).
@@ -42,6 +60,13 @@ export async function POST(req: Request) {
     method: snap.method,
     data: snap as unknown as object,
   };
+  if (!existing) {
+    // Bound the library per device so an anonymous client can't hoard rows.
+    const count = await prisma.dish.count({ where: { deviceId } });
+    if (count >= 200) {
+      return NextResponse.json({ error: "library full — delete a dish first" }, { status: 409 });
+    }
+  }
   const row = existing
     ? await prisma.dish.update({ where: { id: existing.id }, data: fields })
     : await prisma.dish.create({ data: { deviceId, ...fields } });
