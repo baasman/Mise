@@ -20,6 +20,7 @@ const body = z.object({
         shared: z.array(z.string()).optional(),
         contrast: z.string().optional(),
         structure: z.string().optional(),
+        partners: z.array(z.string()).optional(),
       }),
     )
     .max(12),

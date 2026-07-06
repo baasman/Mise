@@ -122,6 +122,46 @@ describe("getSuggestions on a met intent", () => {
   });
 });
 
+describe("getSuggestions classic pairings", () => {
+  it("a classic partner of a board ingredient outranks an equal-fill stranger, and says so", () => {
+    const pool = [
+      ing("cand_classic", { umami: 0.5 }, ["x1"], 0.3),
+      ing("cand_stranger", { umami: 0.5 }, ["x2"], 0.3),
+      ing("board_tomato", { umami: 0.7, sour: 0.4 }, ["x3"]),
+    ];
+    const pairings = { cand_classic: { board_tomato: 1.0 } };
+    const sugg = getSuggestions({
+      committed: [row(1, "board_tomato")],
+      byId: poolById(pool),
+      pool,
+      intent: richIntent,
+      risk: 0.3,
+      suggestionCount: 3,
+      activeCompName: "the dish",
+      pairings,
+    });
+    const ids = sugg.map((s) => s.id);
+    expect(ids.indexOf("cand_classic")).toBeLessThan(ids.indexOf("cand_stranger"));
+    const classic = sugg.find((s) => s.id === "cand_classic")!;
+    expect(classic.partners).toEqual(["board_tomato"]);
+    expect(classic.why).toBe("A classic partner for the board_tomato.");
+  });
+
+  it("no pairing graph → behavior unchanged, partners empty", () => {
+    const pool = [ing("a", { umami: 0.5 }, ["x"]), ing("board_b", { umami: 0.7 }, ["y"])];
+    const sugg = getSuggestions({
+      committed: [row(1, "board_b")],
+      byId: poolById(pool),
+      pool,
+      intent: richIntent,
+      risk: 0.3,
+      suggestionCount: 3,
+      activeCompName: "the dish",
+    });
+    sugg.forEach((s) => expect(s.partners).toEqual([]));
+  });
+});
+
 describe("getSuggestions diversity", () => {
   it("caps how many same-dominant-axis picks surface when other families are available", () => {
     const rich = INTENTS.find((i) => i.id === "rich_comforting")!;

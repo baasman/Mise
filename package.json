@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:generate": "prisma generate",
-    "profile-pantry": "tsx scripts/profile-pantry.ts"
+    "profile-pantry": "tsx scripts/profile-pantry.ts",
+    "build-pairings": "tsx scripts/build-pairings.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

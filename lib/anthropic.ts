@@ -156,6 +156,7 @@ export interface WhyCandidate {
   shared?: string[]; // board aroma notes this candidate echoes
   contrast?: string; // a missing texture/temperature contrast it would add
   structure?: string; // a role the chosen direction leans on that it would fill
+  partners?: string[]; // board ingredients it's a classic, established partner of
 }
 
 export async function suggestionWhy(
@@ -177,10 +178,12 @@ export async function suggestionWhy(
       "a taste move (e.g. \"Lifts it with acid, and seasons it.\"), a pairing move when it echoes " +
       "aroma notes already on the board (e.g. \"Plays off the briny notes already there.\"), or a " +
       "texture move when it supplies a contrast the board is missing (e.g. \"Adds the crunch you're " +
-      "missing.\"), or a structural move when it fills a role the dish's direction leans on and the " +
-      "board is missing (e.g. \"Brings the acid a pasta & sauce leans on.\"). These are heuristics — " +
-      "phrase as an offer, not a fact. Keep it under ~14 words, lowercase-after-first-word, no emoji, " +
-      "end with a period.",
+      "missing.\"), a structural move when it fills a role the dish's direction leans on and the " +
+      "board is missing (e.g. \"Brings the acid a pasta & sauce leans on.\"), or — strongest of all — " +
+      "an established classic combination with something already on the board (e.g. \"A classic " +
+      "partner for the tomato.\"); prefer this framing whenever classic-with is given. These are " +
+      "heuristics — phrase as an offer, not a fact. Keep it under ~14 words, lowercase-after-first-" +
+      "word, no emoji, end with a period.",
     messages: [
       {
         role: "user" as const,
@@ -192,6 +195,7 @@ export async function suggestionWhy(
             .map(
               (x) =>
                 `- ${x.id}: ${x.name} (roles: ${x.roles.join("/") || "—"}` +
+                (x.partners && x.partners.length ? `; classic-with: ${x.partners.slice(0, 3).join(", ")}` : "") +
                 (x.shared && x.shared.length ? `; shares: ${x.shared.join(", ")}` : "") +
                 (x.contrast ? `; adds-contrast: ${x.contrast}` : "") +
                 (x.structure ? `; fills-role: ${x.structure}` : "") +

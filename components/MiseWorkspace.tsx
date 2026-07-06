@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { boardAromaWeights, getSuggestions, intentGap } from "@/lib/engine";
+import { getPairings } from "@/lib/pairings";
 import { estimateFlavor, fetchWhy } from "@/lib/api-client";
 import { useMise } from "./useMise";
 import { Header } from "./Header";
@@ -54,11 +55,13 @@ export function MiseWorkspace() {
       suggestionCount: state.suggestionCount,
       activeCompName: m.activeCompName(),
       form: m.form(),
+      pairings: getPairings(),
     });
     const low = intentGap(state.committed, byId, intent);
-    const candidates = suggestions.map((s) => {
+    // The why endpoint takes at most 12 candidates; beyond that, cards keep local text.
+    const candidates = suggestions.slice(0, 12).map((s) => {
       const ing = byId(s.id);
-      return { id: s.id, name: s.name, roles: ing?.roles ?? [], shared: s.shared, contrast: s.contrast, structure: s.structure };
+      return { id: s.id, name: s.name, roles: ing?.roles ?? [], shared: s.shared, contrast: s.contrast, structure: s.structure, partners: s.partners };
     });
     if (!candidates.length) {
       setWhyOverrides({});

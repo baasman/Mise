@@ -315,10 +315,12 @@ export function riskMeta(nov: number): { text: string; color: string } {
 }
 
 // Blend weights for the suggestion score (sum ~1). Flavor-gap stays primary (the
-// radar/intent is the spine); aroma-affinity, texture-contrast, and structure reshuffle.
-const W_FILL = 0.5;
-const W_AFFINITY = 0.25;
-const W_CONTRAST = 0.12;
+// radar/intent is the spine); classic pairings (real culinary tradition, not our
+// axis math), aroma-affinity, texture-contrast, and structure reshuffle around it.
+const W_FILL = 0.38;
+const W_PAIRING = 0.24;
+const W_AFFINITY = 0.14;
+const W_CONTRAST = 0.11;
 const W_STRUCTURE = 0.13;
 // A lean role with less than this magnitude-weight committed is "open" (≈ less than
 // a single supporting ingredient). Keeps the structure signal board-specific, not
@@ -344,6 +346,7 @@ export interface SuggestionInput {
   activeCompName: string;
   form?: Form | null; // the chosen direction; biases toward roles it leans on
   reach?: Reach | null; // a "reaching for…" lens the cook is steering toward
+  pairings?: Record<string, Record<string, number>> | null; // classic-pairing graph (symmetric)
 }
 
 // How well a candidate satisfies a "reaching for…" lens: axis strength + matching
@@ -373,6 +376,13 @@ export function reachScore(ing: Ingredient, reach: Reach): { score: number; matc
   return { score: Math.max(0, s), matched };
 }
 
+// "A classic partner for the anchovy and capers." — names the board ingredients
+// the candidate has real culinary precedent with (strongest first).
+function pairingWhy(partners: string[]): string {
+  const names = partners.slice(0, 2).map((n) => n.charAt(0).toLowerCase() + n.slice(1));
+  return `A classic partner for the ${names.join(" and ")}.`;
+}
+
 function reachWhy(reach: Reach, matched: string[]): string {
   // Drop a matched tag that just repeats the reach label (e.g. "green … green").
   const tags = matched.filter((t) => t.toLowerCase() !== reach.label.toLowerCase()).slice(0, 2);
@@ -383,7 +393,7 @@ function reachWhy(reach: Reach, matched: string[]): string {
 // Flavor-gap ranking against the intent + risk-dial novelty match, guaranteeing
 // at least one off-script pick. Returns ranked candidates with a local "why".
 export function getSuggestions(input: SuggestionInput): Suggestion[] {
-  const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null, reach = null } = input;
+  const { committed, byId, pool: rawPool, intent, risk, suggestionCount, activeCompName, form = null, reach = null, pairings = null } = input;
   const disp = axisDisplay(committed, byId);
   const low = intentGap(committed, byId, intent);
   // How much gap is actually left to chase. Fill is normalized (best candidate → 1),
@@ -479,7 +489,24 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     }
     const aligned = Math.max(0, reinforceOf(ing) - offAimOf(ing));
     const rs = reach ? reachScore(ing, reach) : { score: 0, matched: [] as string[] };
-    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, aligned, reachM: rs.score, reachMatched: rs.matched, riskMatch: 1 - Math.abs(ing.novelty - risk) };
+    // Classic pairings: real culinary tradition between this candidate and what's
+    // already committed, weighted by how present each board partner is.
+    let pair = 0;
+    const partnerW: { name: string; v: number }[] = [];
+    const prow = pairings ? pairings[ing.id] : undefined;
+    if (prow) {
+      committed.forEach((c) => {
+        const strength = prow[c.ingredientId];
+        if (!strength) return;
+        const v = strength * weight(c.magnitude);
+        pair += v;
+        const pn = byId(c.ingredientId)?.name;
+        if (pn) partnerW.push({ name: pn, v });
+      });
+    }
+    partnerW.sort((a, b) => b.v - a.v);
+    const partners = partnerW.map((p) => p.name);
+    return { ing, fill, aff, con, structure, structurePrimary, shared, contrast, structureNote, aligned, pair, partners, reachM: rs.score, reachMatched: rs.matched, riskMatch: 1 - Math.abs(ing.novelty - risk) };
   });
 
   // Normalize each signal across the candidate set so affinity and contrast genuinely
@@ -490,6 +517,7 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
   const maxStruct = raw.reduce((m, s) => Math.max(m, s.structure), 0);
   const maxAligned = raw.reduce((m, s) => Math.max(m, s.aligned), 0);
   const maxReach = raw.reduce((m, s) => Math.max(m, s.reachM), 0);
+  const maxPair = raw.reduce((m, s) => Math.max(m, s.pair), 0);
   // The spine blends gap-fill → alignment as the intent is met: a wide-open board
   // chases the flavor gap; an on-aim board reinforces its character instead of
   // hammering a near-closed axis. When the cook is steering a "reaching for…" lens,
@@ -501,17 +529,18 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     const affN = maxAff > 0 ? s.aff / maxAff : 0;
     const conN = maxCon > 0 ? s.con / maxCon : 0;
     const structN = maxStruct > 0 ? s.structure / maxStruct : 0;
-    const base = W_FILL * fillN + W_AFFINITY * affN + W_CONTRAST * conN + W_STRUCTURE * structN;
+    const pairN = maxPair > 0 ? s.pair / maxPair : 0;
+    const base = W_FILL * fillN + W_PAIRING * pairN + W_AFFINITY * affN + W_CONTRAST * conN + W_STRUCTURE * structN;
     const reachN = maxReach > 0 ? s.reachM / maxReach : 0;
     const blended = reach ? W_REACH * reachN + (1 - W_REACH) * base : base;
-    return { ...s, fillN, affN, conN, structN, reachN, score: blended * (0.45 + 0.55 * s.riskMatch) };
+    return { ...s, fillN, affN, conN, structN, pairN, reachN, score: blended * (0.45 + 0.55 * s.riskMatch) };
   });
 
   // A candidate earns a slot by matching the cook's reach, filling a flavor gap,
   // reinforcing the character, pairing, adding a missing contrast, or doing a
   // structural job the direction leans on.
   const useful = scored
-    .filter((s) => (reach ? s.reachM > 0 : false) || s.fill > 0.02 || (gapStrength < 1 && s.aligned > 0) || s.aff > 0 || s.con > 0 || s.structure > 0)
+    .filter((s) => (reach ? s.reachM > 0 : false) || s.fill > 0.02 || (gapStrength < 1 && s.aligned > 0) || s.pair > 0 || s.aff > 0 || s.con > 0 || s.structure > 0)
     .sort((a, b) => b.score - a.score);
   const count = Math.max(3, Math.min(suggestionCount, pool.length));
 
@@ -588,31 +617,39 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
     while (sel.length < count && extra.length) sel.push(extra.shift()!);
   }
 
-  // Cap how many cards lead with a structural "why", and dedupe the role, so the
-  // direction stays a couple of pointed nudges instead of a repeated chant.
+  // Cap how many cards lead with a structural or pairing "why" (dedupe the role),
+  // so each framing stays a few pointed nudges instead of a repeated chant.
   const usedStructNotes = new Set<string>();
   let structLeads = 0;
+  let pairLeads = 0;
   return sel.map((s) => {
     const meta = riskMeta(s.ing.novelty);
     // The cook is steering toward this; lead with how the pick answers the reach.
     const reachLed = !!reach && s.reachM > 0;
     const contrastLed = !reachLed && s.conN > 0 && s.conN >= s.fillN && s.conN >= s.affN;
+    // A classic pairing is the strongest kind of reason we have — real culinary
+    // precedent — so it leads whenever it's what actually pulled the pick up.
+    const pairingLed =
+      !reachLed && !contrastLed && s.partners.length > 0 && s.pairN >= s.fillN && s.pairN >= s.affN && pairLeads < 3;
+    if (pairingLed) pairLeads++;
     let structureLed = false;
-    if (!reachLed && !contrastLed && s.structurePrimary && structLeads < 2 && !usedStructNotes.has(s.structureNote)) {
+    if (!reachLed && !contrastLed && !pairingLed && s.structurePrimary && structLeads < 2 && !usedStructNotes.has(s.structureNote)) {
       structureLed = true;
       usedStructNotes.add(s.structureNote);
       structLeads++;
     }
-    const affinityLed = !reachLed && !contrastLed && !structureLed && s.affN > s.fillN && s.shared.length > 0;
+    const affinityLed = !reachLed && !contrastLed && !pairingLed && !structureLed && s.affN > s.fillN && s.shared.length > 0;
     let why: string;
     if (reachLed && reach) {
-      // For a component reach (veg/protein/starch), say how it fits the board if it
-      // shares notes; otherwise the plain "a vegetable to build it out" line.
-      why =
-        reach.kinds && reach.kinds.length && s.shared.length
+      // For a component reach (veg/protein/starch), a classic edge to the board is
+      // the best possible answer; then shared notes; then the plain component line.
+      why = s.partners.length
+        ? pairingWhy(s.partners)
+        : reach.kinds && reach.kinds.length && s.shared.length
           ? `Plays off the ${s.shared.slice(0, 2).join(", ")} notes already on the board.`
           : reachWhy(reach, s.reachMatched);
     } else if (contrastLed) why = s.contrast;
+    else if (pairingLed) why = pairingWhy(s.partners);
     else if (structureLed) why = s.structureNote;
     else why = buildWhy(s.ing, low, s.shared, affinityLed);
     return {
@@ -626,6 +663,7 @@ export function getSuggestions(input: SuggestionInput): Suggestion[] {
       shared: s.shared,
       contrast: s.contrast,
       structure: s.structureNote,
+      partners: s.partners,
     };
   });
 }

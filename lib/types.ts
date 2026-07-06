@@ -57,6 +57,7 @@ export interface Suggestion {
   shared: string[]; // board aroma tags this candidate echoes (affinity)
   contrast: string; // a missing texture/temperature contrast it would add (or "")
   structure: string; // a role the direction leans on that it would fill (or "")
+  partners: string[]; // board ingredients it's a classic partner of (strongest first)
 }
 
 // A saved dish snapshot (matches the prototype's snapshot()).

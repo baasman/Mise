@@ -3,6 +3,7 @@
 // deterministic (engine); the one-line "why" may be replaced by a Claude-written
 // version passed in via whyOverrides, falling back to the local buildWhy string.
 import { getSuggestions, riskDialLabel } from "@/lib/engine";
+import { getPairings } from "@/lib/pairings";
 import { REACHES } from "@/lib/domain";
 import type { Mise } from "./useMise";
 
@@ -19,6 +20,7 @@ export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Recor
     activeCompName: m.activeCompName(),
     form: m.form(),
     reach: activeReach,
+    pairings: getPairings(),
   });
 
   return (

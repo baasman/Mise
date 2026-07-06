@@ -44,6 +44,7 @@ export interface WhyRequestCandidate {
   shared?: string[];
   contrast?: string;
   structure?: string;
+  partners?: string[];
 }
 
 export async function fetchWhy(
