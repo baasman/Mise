@@ -50,10 +50,10 @@ export function Board({ m }: { m: Mise }) {
       {boardEmpty && (
         <div style={{ marginTop: 20, border: "1px solid #e7ddca", background: "#faf4ea", borderRadius: 12, padding: "20px 22px", maxWidth: 560 }}>
           <div style={{ fontFamily: "var(--serif)", fontSize: 21, fontWeight: 500, lineHeight: 1.32, color: "var(--ink)" }}>
-            There&rsquo;s no &ldquo;generate&rdquo; button here &mdash; and there never will be.
+            Start with one ingredient &mdash; anything.
           </div>
           <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "#7c6f5c", marginTop: 9, maxWidth: 500 }}>
-            Add one ingredient to begin. The board reflects what you build, and offers ideas you&rsquo;re always free to ignore. You make every call &mdash; this just keeps you company.
+            The board reflects as you build; ideas wait on the right when you want them.
           </div>
         </div>
       )}
