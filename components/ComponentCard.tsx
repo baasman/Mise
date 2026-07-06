@@ -58,7 +58,7 @@ export function ComponentCard({ m, cp }: { m: Mise; cp: Component }) {
       }}
       style={ws}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, margin: "12px 0 11px" }}>
+      <div className="comp-head" style={{ display: "flex", alignItems: "center", gap: 7, margin: "12px 0 11px" }}>
         <span
           draggable
           onDragStart={(e) => {
@@ -75,7 +75,7 @@ export function ComponentCard({ m, cp }: { m: Mise; cp: Component }) {
           }}
           onDragEnd={m.endDrag}
           title="Drag to reorder this component"
-          className="grip"
+          className="grip row-grip"
           style={{ color: "#c3b59c", fontSize: 15, lineHeight: 1, letterSpacing: "-2px", padding: "2px 1px" }}
         >
           &#10303;&#10303;

@@ -13,6 +13,7 @@ import {
   type Texture,
 } from "@/lib/domain";
 import { rowReflected } from "@/lib/engine";
+import { RowMoveMenu } from "./RowMoveMenu";
 import type { CommittedRow } from "@/lib/types";
 import type { Mise } from "./useMise";
 
@@ -104,6 +105,8 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
       }}
       style={dropStyle}
     >
+      {/* CSS contract: the row-* classNames on this grid's children drive the
+          two-row mobile reflow in globals.css — keep them if editing the layout. */}
       <div
         style={{
           display: "grid",
@@ -133,13 +136,13 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
           }}
           onDragEnd={m.endDrag}
           title="Drag to reorder or move between components"
-          className="grip"
+          className="grip row-grip"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#cbbda4", fontSize: 13, letterSpacing: "-2px", height: "100%" }}
         >
           &#10303;&#10303;
         </span>
 
-        <div style={{ minWidth: 0 }}>
+        <div className="row-name" style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "var(--serif)", fontSize: 17.5, color: "var(--ink)", lineHeight: 1.2 }}>{ing ? ing.name : "—"}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
             <span
@@ -191,7 +194,7 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
           </div>
         </div>
 
-        <div>
+        <div className="row-role">
           <select
             value={c.role}
             onChange={(e) => m.setRole(c.uid, e.target.value as Role)}
@@ -205,7 +208,7 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
           </select>
         </div>
 
-        <div style={{ display: "flex", background: "#f1e9da", border: "1px solid var(--line)", borderRadius: 8, padding: 3, gap: 2 }}>
+        <div className="row-mag" style={{ display: "flex", background: "#f1e9da", border: "1px solid var(--line)", borderRadius: 8, padding: 3, gap: 2 }}>
           {MAGS.map((mm) => (
             <button key={mm} onClick={() => m.setMag(c.uid, mm)} style={magStyle(mm === c.magnitude)}>
               {mm}
@@ -213,9 +216,10 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
-          <button onClick={() => m.openSwap(c.uid)} title="Swap" className="swapbtn" style={iconBtn}>&#8644;</button>
-          <button onClick={() => m.removeRow(c.uid)} title="Remove" className="swapbtn" style={{ ...iconBtn, fontSize: 16 }}>&times;</button>
+        <div className="row-actions" style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
+          <button onClick={() => m.openSwap(c.uid)} title="Swap" className="swapbtn iconbtn" style={iconBtn}>&#8644;</button>
+          <button onClick={() => m.removeRow(c.uid)} title="Remove" className="swapbtn iconbtn" style={{ ...iconBtn, fontSize: 16 }}>&times;</button>
+          <RowMoveMenu m={m} c={c} />
         </div>
       </div>
 
@@ -226,7 +230,7 @@ export function IngredientRow({ m, c }: { m: Mise; c: CommittedRow }) {
             <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: ".6px", textTransform: "uppercase", color: provColor(prov) }}>{prov}</span>
           </div>
           <div style={{ fontSize: 11.5, lineHeight: 1.55, color: "var(--muted-2)", margin: "5px 0 12px", maxWidth: 520 }}>{provNote(prov)}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 26px" }}>
+          <div className="mgrid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 26px" }}>
             {RADAR_ORDER.map((k) => (
               <div key={k} style={{ display: "grid", gridTemplateColumns: "50px 1fr 26px", gap: 9, alignItems: "center" }}>
                 <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: ".8px", color: "var(--muted)" }}>{AXIS_SHORT[k]}</span>

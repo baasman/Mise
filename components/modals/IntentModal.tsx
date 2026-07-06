@@ -14,7 +14,7 @@ export function IntentModal({ m }: { m: Mise }) {
   const aim = desiredVec(m.intent());
 
   return (
-    <div onClick={m.closeIntentModal} style={overlay}>
+    <div onClick={m.closeIntentModal} className="modal-overlay" style={overlay}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...panel, maxWidth: 640, maxHeight: "88vh", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 8px" }}>
           <div>
@@ -23,10 +23,10 @@ export function IntentModal({ m }: { m: Mise }) {
               A starting point, or tune your own. Flags and suggestions are checked against this aim.
             </div>
           </div>
-          <button onClick={m.closeIntentModal} className="swapbtn" style={closeX}>&times;</button>
+          <button onClick={m.closeIntentModal} className="swapbtn closex" style={closeX}>&times;</button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "8px 22px 14px" }}>
+        <div className="mgrid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "8px 22px 14px" }}>
           {INTENTS.map((ic) => {
             const activeCard = !isCustom && ic.id === state.intentId;
             return (
@@ -54,7 +54,7 @@ export function IntentModal({ m }: { m: Mise }) {
               <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "var(--accent)" }}>&#9679; custom in play</span>
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 26px", marginTop: 12 }}>
+          <div className="mgrid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 26px", marginTop: 12 }}>
             {RADAR_ORDER.map((k) => (
               <div key={k} style={{ display: "grid", gridTemplateColumns: "50px 1fr 26px", gap: 9, alignItems: "center" }}>
                 <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: ".8px", color: "var(--muted)" }}>{AXIS_SHORT[k]}</span>

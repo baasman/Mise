@@ -98,7 +98,7 @@ export function RecipeModal({ m }: { m: Mise }) {
   const cardSteps = steps.filter((s) => (s.value || "").trim());
 
   return (
-    <div onClick={m.closeRecipe} style={overlay} className="recipe-overlay">
+    <div onClick={m.closeRecipe} style={overlay} className="modal-overlay recipe-overlay">
       <div onClick={(e) => e.stopPropagation()} style={{ ...panel, maxWidth: 700, maxHeight: "90vh", overflow: "auto" }} className="recipe-panel">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 26px 10px" }}>
           <div style={{ display: "flex", gap: 6 }}>
@@ -112,7 +112,7 @@ export function RecipeModal({ m }: { m: Mise }) {
                 <button onClick={() => window.print()} className="swapbtn" style={actionBtn}>Print</button>
               </>
             )}
-            <button onClick={m.closeRecipe} className="swapbtn" style={closeX}>&times;</button>
+            <button onClick={m.closeRecipe} className="swapbtn closex" style={closeX}>&times;</button>
           </div>
         </div>
 
@@ -140,7 +140,7 @@ export function RecipeModal({ m }: { m: Mise }) {
                     {rows.map((r) => {
                       const ing = byId(r.ingredientId);
                       return (
-                        <div key={r.uid} style={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 12, alignItems: "center" }}>
+                        <div key={r.uid} className="recipe-ing-row" style={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 12, alignItems: "center" }}>
                           <input value={r.amount || ""} onChange={(e) => m.setAmount(r.uid, e.target.value)} placeholder="amount" style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "#5c5246", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 7, padding: "7px 10px" }} />
                           <span style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--ink)" }}>{ing ? ing.name : "—"}</span>
                           <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: ".5px", textTransform: "uppercase", color: "var(--faint)", whiteSpace: "nowrap" }}>{ROLE_LABEL[r.role] || r.role} &middot; {r.magnitude}</span>

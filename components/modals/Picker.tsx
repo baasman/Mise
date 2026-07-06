@@ -36,14 +36,14 @@ export function Picker({ m, onAddCustom }: { m: Mise; onAddCustom: (name: string
   const noResults = items.length === 0 && !showCustom;
 
   return (
-    <div onClick={m.closePicker} style={{ ...overlay }}>
+    <div onClick={m.closePicker} className="modal-overlay" style={{ ...overlay }}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...panel, maxWidth: 540, maxHeight: "82vh", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 20px 12px" }}>
           <div>
             <div style={modalTitle}>{isSwap ? "Swap in…" : "Add an ingredient"}</div>
             <div style={modalSub}>{isSwap ? "Replace this ingredient, keeping its amount." : `Adding to “${m.activeCompName()}”. You choose — nothing is automatic.`}</div>
           </div>
-          <button onClick={m.closePicker} className="swapbtn" style={closeX}>&times;</button>
+          <button onClick={m.closePicker} className="swapbtn closex" style={closeX}>&times;</button>
         </div>
         <div style={{ padding: "0 20px 12px" }}>
           <input

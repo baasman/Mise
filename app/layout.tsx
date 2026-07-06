@@ -1,10 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Mise — a sous-chef, not a vending machine",
   description:
     "A creative recipe workspace. You build the dish; it reflects what's on the board and offers ideas you're always free to ignore.",
+};
+
+// viewportFit "cover" enables env(safe-area-inset-bottom) for the mobile tab bar;
+// maximumScale 1 suppresses iOS input auto-zoom (pinch-zoom still works on modern iOS).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

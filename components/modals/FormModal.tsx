@@ -8,7 +8,7 @@ export function FormModal({ m }: { m: Mise }) {
   if (!state.formModalOpen) return null;
   const form = m.form();
   return (
-    <div onClick={m.closeFormModal} style={overlay}>
+    <div onClick={m.closeFormModal} className="modal-overlay" style={overlay}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...panel, maxWidth: 660, maxHeight: "88vh", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 8px" }}>
           <div>
@@ -17,9 +17,9 @@ export function FormModal({ m }: { m: Mise }) {
               The shape of the dish — it only frames which roles a thing like this usually leans on. Nothing&rsquo;s required; ignore it whenever it&rsquo;s wrong.
             </div>
           </div>
-          <button onClick={m.closeFormModal} className="swapbtn" style={closeX}>&times;</button>
+          <button onClick={m.closeFormModal} className="swapbtn closex" style={closeX}>&times;</button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "8px 22px 14px" }}>
+        <div className="mgrid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "8px 22px 14px" }}>
           {FORMS.map((fc) => {
             const activeCard = !!(form && fc.id === form.id);
             return (

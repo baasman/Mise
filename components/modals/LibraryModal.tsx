@@ -20,14 +20,14 @@ export function LibraryModal({ m }: { m: Mise }) {
   if (!state.libraryOpen) return null;
 
   return (
-    <div onClick={m.closeLibrary} style={overlay}>
+    <div onClick={m.closeLibrary} className="modal-overlay" style={overlay}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...panel, maxWidth: 560, maxHeight: "84vh", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 12px" }}>
           <div>
             <div style={{ fontFamily: "var(--serif)", fontSize: 23, color: "var(--ink)" }}>Saved dishes</div>
             <div style={{ fontSize: 13, color: "var(--muted-2)", marginTop: 4, lineHeight: 1.45 }}>Snapshots of combinations you&rsquo;ve built. Open one to pick up where you left off.</div>
           </div>
-          <button onClick={m.closeLibrary} className="swapbtn" style={closeX}>&times;</button>
+          <button onClick={m.closeLibrary} className="swapbtn closex" style={closeX}>&times;</button>
         </div>
         <div style={{ overflow: "auto", padding: "0 18px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
           {state.saved.map((d) => {

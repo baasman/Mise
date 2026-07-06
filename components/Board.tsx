@@ -27,7 +27,7 @@ export function Board({ m }: { m: Mise }) {
     : [];
 
   return (
-    <section style={{ padding: "26px 32px 64px", overflow: "auto", background: "var(--canvas)" }}>
+    <section className="zone-board" style={{ padding: "26px 32px 64px", overflow: "auto", background: "var(--canvas)" }}>
       <button onClick={m.openFormModal} className="hd" style={{ display: "flex", width: "fit-content", alignItems: "center", gap: 8, background: "transparent", border: "none", padding: 0, marginBottom: 4, cursor: "pointer" }}>
         <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "2.5px", textTransform: "uppercase", color: "var(--accent)" }}>
           {form ? form.kicker : "CHOOSE A DIRECTION"}

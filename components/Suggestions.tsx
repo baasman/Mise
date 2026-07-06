@@ -24,7 +24,7 @@ export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Recor
   });
 
   return (
-    <aside style={{ borderLeft: "1px solid var(--line)", background: "var(--rail)", padding: "22px 22px 32px", overflow: "auto" }}>
+    <aside className="zone-ideas" style={{ borderLeft: "1px solid var(--line)", background: "var(--rail)", padding: "22px 22px 32px", overflow: "auto" }}>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "var(--faint)" }}>
         Suggestions
       </div>

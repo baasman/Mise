@@ -39,7 +39,7 @@ export function Header({ m }: { m: Mise }) {
         <span style={{ fontFamily: "var(--serif)", fontSize: 25, fontWeight: 600, letterSpacing: ".5px", color: "var(--ink)" }}>
           Mise
         </span>
-        <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.6px", textTransform: "uppercase", color: "#a99a85" }}>
+        <span className="hdr-tagline" style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.6px", textTransform: "uppercase", color: "#a99a85" }}>
           a sous-chef, not a vending machine
         </span>
       </div>
@@ -47,7 +47,7 @@ export function Header({ m }: { m: Mise }) {
         <button
           onClick={onNew}
           title="Start a fresh dish (clears the board)"
-          className="hb"
+          className="hb hdr-pill"
           style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--card)", border: confirmNew ? "1px solid var(--accent)" : "1px solid var(--line)", borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
         >
           <span style={{ fontSize: 13, lineHeight: 1, color: "var(--accent)" }}>+</span>
@@ -58,7 +58,7 @@ export function Header({ m }: { m: Mise }) {
         <button
           onClick={m.saveCurrent}
           title="Save this combination"
-          className="hb"
+          className="hb hdr-pill"
           style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
         >
           <span style={{ fontSize: 12, lineHeight: 1, color: state.justSaved ? "#1f8a5b" : "var(--accent)" }}>&#9733;</span>
@@ -69,7 +69,7 @@ export function Header({ m }: { m: Mise }) {
         <button
           onClick={m.openLibrary}
           title="Your saved dishes"
-          className="hb"
+          className="hb hdr-pill"
           style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
         >
           <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.2px", textTransform: "uppercase", color: "#5c5246" }}>Saved</span>
@@ -77,15 +77,15 @@ export function Header({ m }: { m: Mise }) {
             {state.saved.length}
           </span>
         </button>
-        <span style={{ width: 1, height: 24, background: "var(--line)" }} />
+        <span className="hdr-divider" style={{ width: 1, height: 24, background: "var(--line)" }} />
         <button
           onClick={m.openIntentModal}
-          className="hb"
+          className="hb hdr-pill"
           style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, padding: "6px 7px 6px 16px", cursor: "pointer" }}
         >
-          <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "1.6px", color: "#a99a85", textTransform: "uppercase" }}>Intent</span>
-          <span style={{ fontFamily: "var(--serif)", fontSize: 15, color: "var(--ink)" }}>{intentLabel}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 999, background: "#f0e8da", fontSize: 12, color: "#8a7d6a" }}>&#8644;</span>
+          <span className="hdr-intent-kicker" style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "1.6px", color: "#a99a85", textTransform: "uppercase" }}>Intent</span>
+          <span className="hdr-intent-label" style={{ fontFamily: "var(--serif)", fontSize: 15, color: "var(--ink)" }}>{intentLabel}</span>
+          <span className="hdr-intent-arrow" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 999, background: "#f0e8da", fontSize: 12, color: "#8a7d6a" }}>&#8644;</span>
         </button>
       </div>
     </header>

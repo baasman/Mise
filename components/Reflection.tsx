@@ -31,13 +31,13 @@ export function Reflection({ m }: { m: Mise }) {
   const labelKicker = { fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "2px", textTransform: "uppercase" as const, color: "var(--faint)" };
 
   return (
-    <aside style={{ borderRight: "1px solid var(--line)", background: "var(--rail)", padding: "22px 22px 32px", overflow: "auto" }}>
+    <aside className="zone-taste" style={{ borderRight: "1px solid var(--line)", background: "var(--rail)", padding: "22px 22px 32px", overflow: "auto" }}>
       <div style={labelKicker}>The reflection</div>
       <div style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", marginTop: 6 }}>
         The shape of what&rsquo;s on the board, read against your intent.
       </div>
 
-      <div style={{ display: "flex", justifyContent: "center", margin: "14px 0 8px" }}>
+      <div className="radar-wrap" style={{ display: "flex", justifyContent: "center", margin: "14px 0 8px" }}>
         <Radar disp={disp} intent={intent} />
       </div>
 

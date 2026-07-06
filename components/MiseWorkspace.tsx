@@ -8,6 +8,7 @@ import { Header } from "./Header";
 import { Reflection } from "./Reflection";
 import { Board } from "./Board";
 import { Suggestions } from "./Suggestions";
+import { MobileTabs, type MobileTab } from "./MobileTabs";
 import { Picker } from "./modals/Picker";
 import { IntentModal } from "./modals/IntentModal";
 import { FormModal } from "./modals/FormModal";
@@ -18,6 +19,9 @@ export function MiseWorkspace() {
   const m = useMise();
   const { state, byId, pantry } = m;
   const [whyOverrides, setWhyOverrides] = useState<Record<string, string>>({});
+  // Phone layout: which zone the bottom tab bar shows (≤1023px; CSS-driven, so
+  // this is SSR-deterministic and desktop never sees it).
+  const [mtab, setMtab] = useState<MobileTab>("board");
   const whyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Off-pantry add: drop it on the board immediately (as "estimating"), then
@@ -81,9 +85,10 @@ export function MiseWorkspace() {
   }, [state.committed, state.intentId, state.risk, state.suggestionCount, state.dishName, state.reachId]);
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--sans)", color: "var(--ink)", background: "var(--canvas)" }}>
+    <div className="workspace" data-mtab={mtab} style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--sans)", color: "var(--ink)", background: "var(--canvas)" }}>
       <Header m={m} />
       <main
+        className="workspace-main"
         style={{
           flex: "1 1 auto",
           display: "grid",
@@ -96,6 +101,8 @@ export function MiseWorkspace() {
         <Suggestions m={m} whyOverrides={whyOverrides} />
       </main>
 
+      <MobileTabs tab={mtab} onTab={setMtab} />
+
       <Picker m={m} onAddCustom={addCustomWithEstimate} />
       <IntentModal m={m} />
       <FormModal m={m} />
@@ -106,6 +113,7 @@ export function MiseWorkspace() {
         <div
           role="status"
           aria-live="polite"
+          className="toast"
           style={{
             position: "fixed",
             bottom: 24,

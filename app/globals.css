@@ -131,6 +131,161 @@ textarea:focus {
   }
 }
 
+/* ---------- Mobile (≤1023px) ----------
+   The app is styled with inline React styles; the classNames below are override
+   hooks, and !important is required to beat the inline values — deliberately
+   confined to these blocks. Desktop (≥1024px) is untouched. The `screen and`
+   prefix is load-bearing: print reflows to ~800px and must never match. */
+
+/* hidden on desktop; the mobile block reveals them */
+.mobile-tabs,
+.mobile-only {
+  display: none;
+}
+
+/* touch feedback — mirror the hover affordances for pointerless devices */
+@media (hover: none) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hb:active,
+  .swapbtn:active,
+  .addbtn:active,
+  .ghost:active {
+    border-color: var(--accent) !important;
+  }
+  .ht:active,
+  .grip:active {
+    color: var(--accent) !important;
+  }
+  .applybtn:active {
+    background: var(--accent) !important;
+  }
+}
+
+@media screen and (max-width: 1023px) {
+  /* svh/dvh: mobile Safari's URL bar makes 100vh overflow; svh is the fallback */
+  .workspace {
+    height: 100svh !important;
+    height: 100dvh !important;
+  }
+  main.workspace-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  /* bottom tab bar + one-zone-at-a-time visibility */
+  .mobile-tabs {
+    display: flex;
+  }
+  .mobile-only {
+    display: inline-flex;
+  }
+  .workspace[data-mtab="board"] .zone-taste,
+  .workspace[data-mtab="board"] .zone-ideas,
+  .workspace[data-mtab="taste"] .zone-board,
+  .workspace[data-mtab="taste"] .zone-ideas,
+  .workspace[data-mtab="ideas"] .zone-taste,
+  .workspace[data-mtab="ideas"] .zone-board {
+    display: none !important;
+  }
+  .zone-taste,
+  .zone-ideas {
+    border: none !important;
+    padding: 18px 16px calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+  .zone-board {
+    padding: 18px 14px calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* header: brand + pills; wraps to a second row when tight, so height must
+     be free to grow (the fixed 62px would clip the wrapped row) */
+  header {
+    height: auto !important;
+    min-height: 54px;
+    padding: 8px 12px !important;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .hdr-tagline,
+  .hdr-divider,
+  .hdr-intent-kicker,
+  .hdr-intent-arrow {
+    display: none !important;
+  }
+  .hdr-pill {
+    padding: 7px 10px !important;
+  }
+  .hdr-intent-label {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ingredient row: 5-col grid → two rows (name+actions / role+magnitude) */
+  .rowcard {
+    grid-template-columns: 96px minmax(0, 1fr) auto !important;
+    grid-template-areas: "name name actions" "role mag mag";
+    row-gap: 10px;
+  }
+  .row-grip {
+    display: none !important;
+  }
+  .row-name {
+    grid-area: name;
+  }
+  .row-actions {
+    grid-area: actions;
+  }
+  .row-role {
+    grid-area: role;
+  }
+  .row-mag {
+    grid-area: mag;
+  }
+
+  /* radar: scale to the rail (Radar.tsx keeps its width/height attributes) */
+  .radar-wrap svg {
+    width: 100%;
+    height: auto;
+    max-width: 280px;
+  }
+
+  /* touch targets + misc */
+  .iconbtn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .closex {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  button,
+  select {
+    touch-action: manipulation;
+  }
+  .mgrid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-overlay {
+    padding: 12px !important;
+  }
+  .recipe-ing-row {
+    grid-template-columns: 86px minmax(0, 1fr) !important;
+  }
+  .recipe-ing-row > span:last-child {
+    grid-column: 2;
+  }
+  .comp-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
 /* Print: only the recipe card, once, on white. The card lives in a fixed-position
    modal, so we hide the app chrome (header/main), neutralize the modal so it flows
    normally (fixed elements otherwise repeat on every page), and drop the toolbar. */
@@ -139,7 +294,8 @@ textarea:focus {
     margin: 1.5cm;
   }
   header,
-  main {
+  main,
+  .mobile-tabs {
     display: none !important;
   }
   .recipe-overlay {
