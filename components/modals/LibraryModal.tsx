@@ -1,4 +1,5 @@
 "use client";
+import { useRef } from "react";
 import { FORMS, INTENTS } from "@/lib/domain";
 import type { Mise } from "../useMise";
 import { overlay, panel, closeX } from "./shared";
@@ -17,7 +18,20 @@ function relTime(ts: number): string {
 
 export function LibraryModal({ m }: { m: Mise }) {
   const { state } = m;
+  const fileRef = useRef<HTMLInputElement>(null);
   if (!state.libraryOpen) return null;
+
+  const footBtn: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
+    fontFamily: "var(--mono)",
+    fontSize: 10,
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    cursor: "pointer",
+    padding: 0,
+  };
 
   return (
     <div onClick={m.closeLibrary} className="modal-overlay" style={overlay}>
@@ -25,7 +39,9 @@ export function LibraryModal({ m }: { m: Mise }) {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 12px" }}>
           <div>
             <div style={{ fontFamily: "var(--serif)", fontSize: 23, color: "var(--ink)" }}>Saved dishes</div>
-            <div style={{ fontSize: 13, color: "var(--muted-2)", marginTop: 4, lineHeight: 1.45 }}>Snapshots of combinations you&rsquo;ve built. Open one to pick up where you left off.</div>
+            <div style={{ fontSize: 13, color: "var(--muted-2)", marginTop: 4, lineHeight: 1.45 }}>
+              Snapshots of combinations you&rsquo;ve built. They live on <em>this device</em> &mdash; export a copy to keep or move them.
+            </div>
           </div>
           <button onClick={m.closeLibrary} className="swapbtn closex" style={closeX}>&times;</button>
         </div>
@@ -63,6 +79,32 @@ export function LibraryModal({ m }: { m: Mise }) {
               Build something, then hit <span style={{ color: "var(--accent)" }}>&#9733; Save</span> up top.
             </div>
           )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: "1px solid var(--line-soft)", padding: "12px 22px" }}>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".5px", color: "var(--faint)" }}>
+            saved to this device &middot; no account
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {state.saved.length > 0 && (
+              <button onClick={m.exportDishes} className="ht" style={footBtn}>
+                &darr; export all
+              </button>
+            )}
+            <button onClick={() => fileRef.current?.click()} className="ht" style={footBtn}>
+              &uarr; import
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) m.importDishes(f);
+                e.target.value = ""; // allow re-importing the same file
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

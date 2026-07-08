@@ -788,6 +788,59 @@ export function useMise() {
     apiDeleteDish(id).catch(() => {});
   }, [set]);
 
+  // ---- export / import ----
+  // Saved dishes are device-cookie-scoped, so this is the escape hatch: download
+  // them as JSON, restore on another device (or after clearing cookies) by
+  // importing the file. Import goes through the normal save API, so every dish
+  // is validated server-side and merges by name instead of duplicating.
+  const exportDishes = useCallback(() => {
+    const s = stateRef.current;
+    const payload = { app: "mise", version: 1, exportedAt: Date.now(), dishes: s.saved };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mise-dishes.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    flashToast(`Exported ${s.saved.length} ${s.saved.length === 1 ? "dish" : "dishes"}`);
+  }, [flashToast]);
+
+  const importDishes = useCallback(
+    async (file: File) => {
+      let dishes: unknown[];
+      try {
+        const parsed = JSON.parse(await file.text());
+        dishes = Array.isArray(parsed) ? parsed : parsed?.dishes;
+        if (!Array.isArray(dishes) || !dishes.length) {
+          flashToast("No dishes found in that file");
+          return;
+        }
+      } catch {
+        flashToast("Couldn’t read that file");
+        return;
+      }
+      let ok = 0;
+      let failed = 0;
+      for (const d of dishes) {
+        try {
+          await apiSaveDish(d as DishSnapshot);
+          ok++;
+        } catch {
+          failed++;
+        }
+      }
+      const fresh = await fetchDishes().catch(() => null);
+      if (fresh) set({ saved: fresh });
+      flashToast(
+        failed
+          ? `Imported ${ok} — ${failed} couldn’t be read`
+          : `Imported ${ok} ${ok === 1 ? "dish" : "dishes"}`,
+      );
+    },
+    [set, flashToast],
+  );
+
   return {
     state,
     pantry,
@@ -860,6 +913,8 @@ export function useMise() {
     saveCurrent,
     loadSaved,
     deleteSaved,
+    exportDishes,
+    importDishes,
     newDish,
     loadExample,
   };
