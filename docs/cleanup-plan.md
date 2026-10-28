@@ -9,9 +9,9 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
   - [x] bound every string/array in the `/why` schema (clipped, not rejected — big dishes legitimately send long lists)
   - [x] Postgres-backed rate limit (`RateLimit` table): estimate ~20/h, why ~120/h per device/IP; global daily Opus cap via `ESTIMATE_DAILY_CAP`; 429 when exceeded
   - [x] estimate cache write → `upsert`; store `ESTIMATE_MODEL`, not a literal
-- [ ] **3. Honest saves**
-  - [ ] failed save shows the server's error, not "Saved"
-  - [ ] dishes POST writes via `upsert`, unique-violation race → 409/retry
+- [x] **3. Honest saves**
+  - [x] failed save shows the server's error, not "Saved"
+  - [x] dishes POST writes via `upsert`, unique-violation race → 409/retry
 - [ ] **4. "Why" correctness + render cost**
   - [ ] compute suggestions once (`useMemo`), pass down
   - [ ] `byId` backed by a `Map`

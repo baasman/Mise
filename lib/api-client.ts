@@ -82,7 +82,11 @@ export async function saveDish(snapshot: DishSnapshot): Promise<SavedDish> {
     credentials: "same-origin",
     body: JSON.stringify(snapshot),
   });
-  if (!r.ok) throw new Error("save failed");
+  if (!r.ok) {
+    // Surface the server's reason (e.g. "library full — delete a dish first").
+    const body = (await r.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || "save failed");
+  }
   return r.json();
 }
 

@@ -740,6 +740,7 @@ export function useMise() {
     };
   }, []);
 
+  // "Saved" only confirms a save the server accepted; a failure says why instead.
   const saveCurrent = useCallback(() => {
     const snap = snapshot();
     apiSaveDish(snap)
@@ -750,11 +751,14 @@ export function useMise() {
           arr.sort((a, b) => b.savedAt - a.savedAt);
           return { saved: arr, justSaved: true };
         });
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(() => set({ justSaved: false }), 1600);
       })
-      .catch(() => set({ justSaved: true }));
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => set({ justSaved: false }), 1600);
-  }, [snapshot, set]);
+      .catch((e: unknown) => {
+        const reason = e instanceof Error && e.message !== "save failed" ? e.message : "check your connection";
+        flashToast(`Not saved: ${reason}`);
+      });
+  }, [snapshot, set, flashToast]);
 
   const loadSaved = useCallback((id: string) => {
     const d = stateRef.current.saved.find((x) => x.id === id);
@@ -822,19 +826,21 @@ export function useMise() {
       }
       let ok = 0;
       let failed = 0;
+      let firstError = "";
       for (const d of dishes) {
         try {
           await apiSaveDish(d as DishSnapshot);
           ok++;
-        } catch {
+        } catch (e) {
           failed++;
+          if (!firstError && e instanceof Error && e.message !== "save failed") firstError = e.message;
         }
       }
       const fresh = await fetchDishes().catch(() => null);
       if (fresh) set({ saved: fresh });
       flashToast(
         failed
-          ? `Imported ${ok} — ${failed} couldn’t be read`
+          ? `Imported ${ok} — ${failed} not saved${firstError ? ` (${firstError})` : ""}`
           : `Imported ${ok} ${ok === 1 ? "dish" : "dishes"}`,
       );
     },

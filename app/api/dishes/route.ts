@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   if (!json.ok) return json.response;
   const parsed = dishSnapshotSchema.safeParse(json.data);
   if (!parsed.success) {
-    return NextResponse.json({ error: "bad request" }, { status: 400 });
+    return NextResponse.json({ error: "the dish data didn't validate" }, { status: 400 });
   }
   const snap = parsed.data as DishSnapshot;
   const name = (snap.name || "").trim() || "Untitled dish";
@@ -44,15 +44,6 @@ export async function POST(req: Request) {
     where: { deviceId_name: { deviceId, name } },
     select: { id: true },
   });
-  const fields = {
-    name,
-    intentId: snap.intentId,
-    formId: snap.formId,
-    customForm: (snap.customForm ?? undefined) as object | undefined,
-    risk: snap.risk,
-    method: snap.method,
-    data: snap as unknown as object,
-  };
   if (!existing) {
     // Bound the library per device so an anonymous client can't hoard rows.
     const count = await prisma.dish.count({ where: { deviceId } });
@@ -60,9 +51,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "library full — delete a dish first" }, { status: 409 });
     }
   }
-  const row = existing
-    ? await prisma.dish.update({ where: { id: existing.id }, data: fields })
-    : await prisma.dish.create({ data: { deviceId, ...fields } });
+  const fields = {
+    intentId: snap.intentId,
+    formId: snap.formId,
+    customForm: (snap.customForm ?? undefined) as object | undefined,
+    risk: snap.risk,
+    method: snap.method,
+    data: snap as unknown as object,
+  };
+  // Write with upsert (a native INSERT … ON CONFLICT), so two concurrent saves
+  // of a new name can't race into a unique-constraint error.
+  const row = await prisma.dish.upsert({
+    where: { deviceId_name: { deviceId, name } },
+    create: { deviceId, name, ...fields },
+    update: fields,
+  });
 
   return NextResponse.json(toSaved(row));
 }
