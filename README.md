@@ -71,6 +71,7 @@ The only steps that can't live in the repo (they're infra + secrets):
    | ------------------- | ----------------------------------------------------------- |
    | `DATABASE_URL`      | the **direct / unpooled** connection string (`db push` doesn't run over a pgbouncer pool) |
    | `ANTHROPIC_API_KEY` | optional — enables flavor estimation + the AI "why"         |
+   | `ESTIMATE_DAILY_CAP` | optional — max uncached Opus estimates per UTC day, all users (default 500) |
 
 That's it — redeploy and the build provisions the schema and seeds the pantry itself.
 
@@ -79,6 +80,9 @@ Notes:
   preview its own `DATABASE_URL` if you want it to run against a separate database.
 - Destructive schema changes make `db push` fail the build (a safety net) rather than
   silently dropping data — handle those with a migration when the time comes.
+- The two Claude routes are rate-limited per client IP (estimate 20/h, why 120/h;
+  `lib/rate-limit.ts`) with a global daily cap on estimates, counted in the
+  `RateLimit` table — no extra infra.
 - Saved dishes are anonymous + device-scoped (an httpOnly cookie), so there's no auth
   to configure. For higher traffic, point `DATABASE_URL` at the pooled endpoint and add
   a `directUrl` to the Prisma datasource for the build-time `db push`.

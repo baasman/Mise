@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDeviceId } from "@/lib/identity";
+import { readJson } from "@/lib/http";
 import { MAX_DISH_BYTES, dishSnapshotSchema } from "@/lib/dish-schema";
 import type { DishSnapshot } from "@/lib/types";
 
@@ -29,17 +30,9 @@ export async function POST(req: Request) {
 
   // The client is anonymous, so don't trust the body: cap the size, then
   // validate the shape (bounded strings/arrays; unknown keys are stripped).
-  const raw = await req.text();
-  if (raw.length > MAX_DISH_BYTES) {
-    return NextResponse.json({ error: "dish too large" }, { status: 413 });
-  }
-  let json: unknown;
-  try {
-    json = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ error: "bad request" }, { status: 400 });
-  }
-  const parsed = dishSnapshotSchema.safeParse(json);
+  const json = await readJson(req, MAX_DISH_BYTES);
+  if (!json.ok) return json.response;
+  const parsed = dishSnapshotSchema.safeParse(json.data);
   if (!parsed.success) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }

@@ -18,7 +18,7 @@ import {
   type Texture,
 } from "./domain";
 
-const ESTIMATE_MODEL = "claude-opus-4-8";
+export const ESTIMATE_MODEL = "claude-opus-4-8";
 const WHY_MODEL = "claude-haiku-4-5";
 
 let client: Anthropic | null = null;

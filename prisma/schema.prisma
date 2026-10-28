@@ -53,6 +53,15 @@ model FlavorEstimateCache {
   createdAt     DateTime @default(now())
 }
 
+// Fixed-window request counters (lib/rate-limit.ts). key = scope:subject:window.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 // A saved dish snapshot — device-scoped, save-by-name upsert.
 model Dish {
   id         String   @id @default(uuid())
