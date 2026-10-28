@@ -8,7 +8,6 @@ const json = { "Content-Type": "application/json" };
 
 export interface PantryResponse {
   pantry: Ingredient[]; // global seed
-  custom: Ingredient[]; // this device's own ingredients
 }
 
 export async function fetchPantry(): Promise<PantryResponse> {
@@ -85,16 +84,6 @@ export async function deleteDish(id: string): Promise<void> {
     credentials: "same-origin",
   });
   if (!r.ok) throw new Error("delete failed");
-}
-
-export async function persistCustomIngredient(ing: Ingredient): Promise<void> {
-  // best-effort; the dish snapshot also carries custom ingredients
-  await fetch("/api/ingredients", {
-    method: "POST",
-    headers: json,
-    credentials: "same-origin",
-    body: JSON.stringify(ing),
-  }).catch(() => {});
 }
 
 export type { Suggestion };

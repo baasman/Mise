@@ -38,5 +38,5 @@ export async function GET() {
     where: { deviceId: null },
     orderBy: { name: "asc" },
   });
-  return NextResponse.json({ pantry: global.map(toClient), custom: [] });
+  return NextResponse.json({ pantry: global.map(toClient) });
 }

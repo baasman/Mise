@@ -172,7 +172,6 @@ export function useMise() {
     fetchPantry()
       .then((r) => {
         if (r.pantry?.length) setPantry(r.pantry);
-        if (r.custom?.length) set((s) => ({ customIngredients: [...s.customIngredients, ...r.custom] }));
         set({ pantryLoaded: true });
       })
       .catch(() => set({ pantryLoaded: true }));
@@ -810,7 +809,8 @@ export function useMise() {
     a.href = url;
     a.download = "mise-dishes.json";
     a.click();
-    URL.revokeObjectURL(url);
+    // Revoking in the same tick can cancel the download in Safari/Firefox.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     flashToast(`Exported ${s.saved.length} ${s.saved.length === 1 ? "dish" : "dishes"}`);
   }, [flashToast]);
 

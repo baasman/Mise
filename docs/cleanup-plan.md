@@ -20,10 +20,10 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
 - [x] **5. Backend tidy**
   - [x] only write routes create a `Device`; cookie must be a UUID
   - [x] seed applies `pantry.json` edits to a populated DB
-- [ ] **6. Dead code + lint**
-  - [ ] remove `persistCustomIngredient` and the `custom: []` path (leave `Ingredient.deviceId` until a real migration)
-  - [ ] ESLint flat config + `npm run lint` in CI
-  - [ ] export: revoke the object URL after a tick
+- [x] **6. Dead code + lint**
+  - [x] remove `persistCustomIngredient` and the `custom: []` path (leave `Ingredient.deviceId` until a real migration)
+  - [x] ESLint flat config + `npm run lint` in CI
+  - [x] export: revoke the object URL after a tick
 - [ ] **7. Anthropic SDK upgrade** — drop the `as unknown as` casts in `lib/anthropic.ts`
 - [ ] **8. zod 4** — clears the last audit item
 - [ ] _Later:_ split `components/useMise.ts`

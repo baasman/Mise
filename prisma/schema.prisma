@@ -19,7 +19,10 @@ model Device {
   dishes      Dish[]
 }
 
-// Canonical pantry (deviceId null) + a device's custom ingredients (deviceId set).
+// Canonical pantry (deviceId null). Custom ingredients travel inside dish
+// snapshots instead; nothing writes deviceId today. TODO: drop deviceId and
+// the Device relation with a real migration (the deploy-time db push refuses
+// destructive changes).
 model Ingredient {
   id         String   @id @default(uuid())
   slug       String // stable id from the prototype (e.g. "olive_oil") or "cust_..."

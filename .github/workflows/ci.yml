@@ -1,4 +1,4 @@
-# Typecheck, test, and build on every push/PR. The build needs no database:
+# Typecheck, lint, test, and build on every push/PR. The build needs no database:
 # scripts/predeploy.ts only runs on Vercel, and `next build` works without
 # DATABASE_URL (all API routes are dynamic).
 name: CI
@@ -19,5 +19,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run lint
       - run: npm test
       - run: npm run build
