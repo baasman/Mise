@@ -2,26 +2,23 @@
 // RIGHT zone — suggestions. Flavor-driven, explained, risk-rated. Ranking is
 // deterministic (engine); the one-line "why" may be replaced by a Claude-written
 // version passed in via whyOverrides, falling back to the local buildWhy string.
-import { getSuggestions, riskDialLabel } from "@/lib/engine";
-import { getPairings } from "@/lib/pairings";
+import { riskDialLabel } from "@/lib/engine";
 import { REACHES } from "@/lib/domain";
+import type { Suggestion } from "@/lib/types";
 import type { Mise } from "./useMise";
 
-export function Suggestions({ m, whyOverrides }: { m: Mise; whyOverrides?: Record<string, string> }) {
-  const { state, byId, pantry } = m;
+// `suggestions` is ranked once in MiseWorkspace (it also drives the "why" request).
+export function Suggestions({
+  m,
+  suggestions,
+  whyOverrides,
+}: {
+  m: Mise;
+  suggestions: Suggestion[];
+  whyOverrides?: Record<string, string>;
+}) {
+  const { state } = m;
   const activeReach = m.reach();
-  const suggestions = getSuggestions({
-    committed: state.committed,
-    byId,
-    pool: pantry,
-    intent: m.intent(),
-    risk: state.risk,
-    suggestionCount: state.suggestionCount,
-    activeCompName: m.activeCompName(),
-    form: m.form(),
-    reach: activeReach,
-    pairings: getPairings(),
-  });
 
   return (
     <aside className="zone-ideas" style={{ borderLeft: "1px solid var(--line)", background: "var(--rail)", padding: "22px 22px 32px", overflow: "auto" }}>

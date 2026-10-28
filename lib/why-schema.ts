@@ -20,7 +20,6 @@ const gap = z
 export const whyRequestSchema = z.object({
   board: z.object({
     intentLabel: clip(80),
-    dishName: clip(120),
     low: z.object(Object.fromEntries(AXES.map((k) => [k, gap])) as Record<(typeof AXES)[number], typeof gap>),
     aromas: list(clip(40), 40).optional(),
   }),

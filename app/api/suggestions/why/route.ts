@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   try {
     const why = await suggestionWhy(
-      { intentLabel: board.intentLabel, dishName: board.dishName, low, aromas: board.aromas ?? [] },
+      { intentLabel: board.intentLabel, low, aromas: board.aromas ?? [] },
       candidates,
     );
     return NextResponse.json({ why });

@@ -160,7 +160,7 @@ export interface WhyCandidate {
 }
 
 export async function suggestionWhy(
-  board: { intentLabel: string; dishName: string; low: AxisMap; aromas?: string[] },
+  board: { intentLabel: string; low: AxisMap; aromas?: string[] },
   candidates: WhyCandidate[],
 ): Promise<{ id: string; why: string }[]> {
   if (!candidates.length) return [];

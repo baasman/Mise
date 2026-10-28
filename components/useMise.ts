@@ -3,7 +3,7 @@
 // class: same `state` shape, same actions, same drag-and-drop semantics. The
 // radar / flags / suggestions are derived from this state via lib/engine.ts.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FORMS,
   INTENTS,
@@ -214,10 +214,14 @@ export function useMise() {
     return () => clearTimeout(t);
   }, [hydrated, state]);
 
+  // The engine calls byId many times per candidate, so the ~500-item pantry is
+  // a Map. Custom ingredients are few and read through the ref, so byId stays
+  // stable across edits — memoized consumers must list customIngredients as a dep.
+  const pantryById = useMemo(() => new Map(pantry.map((p) => [p.id, p])), [pantry]);
   const byId = useCallback(
     (id: string): Ingredient | undefined =>
-      pantry.find((p) => p.id === id) || stateRef.current.customIngredients.find((p) => p.id === id),
-    [pantry],
+      pantryById.get(id) || stateRef.current.customIngredients.find((p) => p.id === id),
+    [pantryById],
   );
 
   const intent = useCallback((): Intent => {

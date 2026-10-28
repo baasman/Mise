@@ -2,6 +2,7 @@
 // anonymous device cookie automatically (same-origin, credentials included).
 import type { AxisMap, Role, Temperature, Texture } from "./domain";
 import type { DishSnapshot, Ingredient, Suggestion } from "./types";
+import type { WhyRequest } from "./why-request";
 
 const json = { "Content-Type": "application/json" };
 
@@ -37,25 +38,13 @@ export async function estimateFlavor(name: string): Promise<EstimateResponse> {
   return r.json();
 }
 
-export interface WhyRequestCandidate {
-  id: string;
-  name: string;
-  roles: string[];
-  shared?: string[];
-  contrast?: string;
-  structure?: string;
-  partners?: string[];
-}
-
-export async function fetchWhy(
-  board: { intentLabel: string; dishName: string; low: AxisMap; aromas?: string[] },
-  candidates: WhyRequestCandidate[],
-): Promise<Record<string, string>> {
+export async function fetchWhy(body: WhyRequest, signal?: AbortSignal): Promise<Record<string, string>> {
   const r = await fetch("/api/suggestions/why", {
     method: "POST",
     headers: json,
     credentials: "same-origin",
-    body: JSON.stringify({ board, candidates }),
+    body: JSON.stringify(body),
+    signal,
   });
   if (!r.ok) throw new Error("why failed");
   const data = (await r.json()) as { why: { id: string; why: string }[] };

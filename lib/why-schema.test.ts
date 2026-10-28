@@ -4,7 +4,6 @@ import { whyRequestSchema } from "./why-schema";
 const valid = {
   board: {
     intentLabel: "Bright & sharp",
-    dishName: "Sunday tangle",
     low: { salt: 0.2, sour: 0.4 },
     aromas: ["briny", "citrus"],
   },
@@ -20,10 +19,10 @@ describe("whyRequestSchema", () => {
 
   it("clips long strings and lists instead of rejecting them", () => {
     const r = whyRequestSchema.parse({
-      board: { ...valid.board, dishName: "x".repeat(500), aromas: Array.from({ length: 200 }, (_, i) => `a${i}`) },
+      board: { ...valid.board, intentLabel: "x".repeat(500), aromas: Array.from({ length: 200 }, (_, i) => `a${i}`) },
       candidates: [{ ...valid.candidates[0], name: "y".repeat(500), partners: Array(50).fill("Tomato") }],
     });
-    expect(r.board.dishName).toHaveLength(120);
+    expect(r.board.intentLabel).toHaveLength(80);
     expect(r.board.aromas).toHaveLength(40);
     expect(r.candidates[0].name).toHaveLength(80);
     expect(r.candidates[0].partners).toHaveLength(3);

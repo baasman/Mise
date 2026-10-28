@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { boardAromaWeights, getSuggestions, intentGap } from "@/lib/engine";
+import { useEffect, useMemo, useState } from "react";
+import { getSuggestions, intentGap } from "@/lib/engine";
 import { getPairings } from "@/lib/pairings";
 import { estimateFlavor, fetchWhy } from "@/lib/api-client";
+import { buildWhyRequest, type WhyRequest } from "@/lib/why-request";
 import { useMise } from "./useMise";
 import { Header } from "./Header";
 import { Reflection } from "./Reflection";
@@ -22,7 +23,6 @@ export function MiseWorkspace() {
   // Phone layout: which zone the bottom tab bar shows (≤1023px; CSS-driven, so
   // this is SSR-deterministic and desktop never sees it).
   const [mtab, setMtab] = useState<MobileTab>("board");
-  const whyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Off-pantry add: drop it on the board immediately (as "estimating"), then
   // ground it with a Claude estimate that fills the profile in place. Falls back
@@ -38,51 +38,64 @@ export function MiseWorkspace() {
       .catch(() => m.failCustomIngredient(id));
   }
 
+  // Rank once per relevant change and share the result with the Suggestions
+  // rail. byId reads custom ingredients through a ref, so they're listed as a
+  // dep explicitly (an estimate resolving changes them without touching rows).
+  const reach = m.reach();
+  const suggestions = useMemo(
+    () =>
+      getSuggestions({
+        committed: state.committed,
+        byId,
+        pool: pantry,
+        intent: m.intent(),
+        risk: state.risk,
+        suggestionCount: state.suggestionCount,
+        activeCompName: m.activeCompName(),
+        form: m.form(),
+        reach,
+        pairings: getPairings(),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.committed, state.customIngredients, byId, pantry, state.intentId, state.customIntent, state.risk,
+     state.suggestionCount, state.components, state.activeComp, state.formId, state.customForm, reach],
+  );
+
   // Ask Claude (Haiku) to phrase the "why" for the current suggestion set.
-  // Deterministic ranking already ran client-side; this only replaces the text,
-  // and silently keeps the local buildWhy string when the endpoint is absent.
-  useEffect(() => {
+  // Deterministic ranking already ran; this only replaces the text, and silently
+  // keeps the local buildWhy string when the endpoint is absent or limited.
+  // When the cook is steering a "reaching for…" lens, the engine's reach-led
+  // "why" is the responsive answer, so there's no request at all.
+  const whyKey = useMemo(() => {
+    if (reach) return "";
     const intent = m.intent();
-    // When the cook is steering a "reaching for…" lens, the engine's reach-led "why"
-    // ("Brings the grassy, herbal green you're after") is the responsive answer —
-    // skip the Haiku pass so it isn't overwritten with a generic gap reason.
-    if (m.reach()) {
+    const req = buildWhyRequest(suggestions, state.committed, byId, intent, intentGap(state.committed, byId, intent));
+    return req ? JSON.stringify(req) : "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestions, reach]);
+
+  // Fetch only when the payload itself changes (not on amount/notes/name edits).
+  // Each change aborts the previous request, so a slow stale reply can't land.
+  useEffect(() => {
+    if (!whyKey) {
       setWhyOverrides({});
       return;
     }
-    const suggestions = getSuggestions({
-      committed: state.committed,
-      byId,
-      pool: pantry,
-      intent,
-      risk: state.risk,
-      suggestionCount: state.suggestionCount,
-      activeCompName: m.activeCompName(),
-      form: m.form(),
-      pairings: getPairings(),
-    });
-    const low = intentGap(state.committed, byId, intent);
-    // The why endpoint takes at most 12 candidates; beyond that, cards keep local text.
-    const candidates = suggestions.slice(0, 12).map((s) => {
-      const ing = byId(s.id);
-      return { id: s.id, name: s.name, roles: ing?.roles ?? [], shared: s.shared, contrast: s.contrast, structure: s.structure, partners: s.partners };
-    });
-    if (!candidates.length) {
-      setWhyOverrides({});
-      return;
-    }
-    const boardAromas = Array.from(boardAromaWeights(state.committed, byId).keys());
-    if (whyTimer.current) clearTimeout(whyTimer.current);
-    whyTimer.current = setTimeout(() => {
-      fetchWhy({ intentLabel: intent.label, dishName: state.dishName, low, aromas: boardAromas }, candidates)
-        .then(setWhyOverrides)
-        .catch(() => setWhyOverrides({}));
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetchWhy(JSON.parse(whyKey) as WhyRequest, ctrl.signal)
+        .then((w) => {
+          if (!ctrl.signal.aborted) setWhyOverrides(w);
+        })
+        .catch(() => {
+          if (!ctrl.signal.aborted) setWhyOverrides({});
+        });
     }, 450);
     return () => {
-      if (whyTimer.current) clearTimeout(whyTimer.current);
+      clearTimeout(t);
+      ctrl.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.committed, state.intentId, state.risk, state.suggestionCount, state.dishName, state.reachId]);
+  }, [whyKey]);
 
   return (
     <div className="workspace" data-mtab={mtab} style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--sans)", color: "var(--ink)", background: "var(--canvas)" }}>
@@ -98,7 +111,7 @@ export function MiseWorkspace() {
       >
         <Reflection m={m} />
         <Board m={m} />
-        <Suggestions m={m} whyOverrides={whyOverrides} />
+        <Suggestions m={m} suggestions={suggestions} whyOverrides={whyOverrides} />
       </main>
 
       <MobileTabs tab={mtab} onTab={setMtab} />

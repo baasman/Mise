@@ -12,11 +12,11 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
 - [x] **3. Honest saves**
   - [x] failed save shows the server's error, not "Saved"
   - [x] dishes POST writes via `upsert`, unique-violation race → 409/retry
-- [ ] **4. "Why" correctness + render cost**
-  - [ ] compute suggestions once (`useMemo`), pass down
-  - [ ] `byId` backed by a `Map`
-  - [ ] refetch "why" on an ingredient/role/intent/form/risk/active-component signature, not every edit
-  - [ ] `AbortController` + request id so stale responses can't win
+- [x] **4. "Why" correctness + render cost**
+  - [x] compute suggestions once (`useMemo`), pass down
+  - [x] `byId` backed by a `Map`
+  - [x] refetch "why" on an ingredient/role/intent/form/risk/active-component signature, not every edit
+  - [x] `AbortController` + request id so stale responses can't win
 - [ ] **5. Backend tidy**
   - [ ] only write routes create a `Device`; cookie must be a UUID
   - [ ] seed applies `pantry.json` edits to a populated DB
