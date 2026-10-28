@@ -78,10 +78,10 @@ export async function estimateFlavor(
   const c = getClient();
   // Haiku doesn't take adaptive thinking; Opus/Sonnet/Fable do.
   const useThinking = !model.includes("haiku");
-  const req = {
+  const req: Anthropic.MessageCreateParamsNonStreaming = {
     model,
     max_tokens: 3000,
-    ...(useThinking ? { thinking: { type: "adaptive" as const } } : {}),
+    ...(useThinking ? { thinking: { type: "adaptive" } } : {}),
     system:
       "You estimate the profile of a single cooking ingredient for a recipe tool. " +
       "These are honest ESTIMATES, not measurements — a real version would draw on a tasting " +
@@ -97,7 +97,7 @@ export async function estimateFlavor(
       "Be calibrated: most ingredients are strong on only one or two axes.",
     messages: [
       {
-        role: "user" as const,
+        role: "user",
         content: `Estimate the profile of: ${name}` + (categoryHint ? ` (category: ${categoryHint})` : ""),
       },
     ],
@@ -120,8 +120,7 @@ export async function estimateFlavor(
       },
     },
   };
-  // output_config is a current API feature not yet in this SDK version's types.
-  const resp = await c.messages.create(req as unknown as Anthropic.MessageCreateParamsNonStreaming);
+  const resp = await c.messages.create(req);
   const parsed = estimateSchema.parse(JSON.parse(firstText(resp.content)));
   const axes = { ...ZERO_AXES } as AxisMap;
   const raw = parsed as Record<string, unknown>;
@@ -170,7 +169,7 @@ export async function suggestionWhy(
     .map((k) => k)
     .join(", ");
   const boardAromas = (board.aromas ?? []).join(", ");
-  const req = {
+  const req: Anthropic.MessageCreateParamsNonStreaming = {
     model: WHY_MODEL,
     max_tokens: 1500,
     system:
@@ -186,7 +185,7 @@ export async function suggestionWhy(
       "word, no emoji, end with a period.",
     messages: [
       {
-        role: "user" as const,
+        role: "user",
         content:
           `Intent: ${board.intentLabel}. The dish reads low on: ${lowList || "nothing in particular"}.\n` +
           `Aroma notes already on the board: ${boardAromas || "none yet"}.\n` +
@@ -226,7 +225,7 @@ export async function suggestionWhy(
       },
     },
   };
-  const resp = await c.messages.create(req as unknown as Anthropic.MessageCreateParamsNonStreaming);
+  const resp = await c.messages.create(req);
   const parsed = whySchema.parse(JSON.parse(firstText(resp.content)));
   const valid = new Set(candidates.map((x) => x.id));
   return parsed.reasons.filter((r) => valid.has(r.id));

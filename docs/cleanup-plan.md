@@ -24,6 +24,7 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
   - [x] remove `persistCustomIngredient` and the `custom: []` path (leave `Ingredient.deviceId` until a real migration)
   - [x] ESLint flat config + `npm run lint` in CI
   - [x] export: revoke the object URL after a tick
-- [ ] **7. Anthropic SDK upgrade** — drop the `as unknown as` casts in `lib/anthropic.ts`
+- [x] **7. Anthropic SDK upgrade** — 0.70 → 0.137 (latest 0.x); casts gone, requests verified byte-for-byte equivalent.
+  - [ ] _Follow-up:_ SDK 1.x moves to API version `2026-10-21` (its only breaking change) — upgrade with a live key to check both endpoints.
 - [ ] **8. zod 4** — clears the last audit item
 - [ ] _Later:_ split `components/useMise.ts`
