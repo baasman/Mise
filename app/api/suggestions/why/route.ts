@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getDeviceId } from "@/lib/identity";
 import { readJson } from "@/lib/http";
 import { LIMITS, clientIp, hit } from "@/lib/rate-limit";
 import { MAX_WHY_BYTES, whyRequestSchema } from "@/lib/why-schema";
@@ -7,7 +6,6 @@ import { ApiKeyMissing, suggestionWhy } from "@/lib/anthropic";
 import { AXES, ZERO_AXES, type AxisMap } from "@/lib/domain";
 
 export async function POST(req: Request) {
-  await getDeviceId();
   const json = await readJson(req, MAX_WHY_BYTES);
   if (!json.ok) return json.response;
   const parsed = whyRequestSchema.safeParse(json.data);

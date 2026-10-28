@@ -52,7 +52,7 @@ and suggestion reasons use the local fallback — the app degrades gracefully.
 | `npm run build`    | production build                                |
 | `npm test`         | engine unit tests (radar math, ranking, flags)  |
 | `npm run db:push`  | sync schema to the database                     |
-| `npm run db:seed`  | seed / re-seed the global pantry (from `prisma/pantry.json`) |
+| `npm run db:seed`  | sync the global pantry from `prisma/pantry.json` (adds + edits only) |
 
 ## Deploy (Vercel)
 

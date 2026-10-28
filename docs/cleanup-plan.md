@@ -17,9 +17,9 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
   - [x] `byId` backed by a `Map`
   - [x] refetch "why" on an ingredient/role/intent/form/risk/active-component signature, not every edit
   - [x] `AbortController` + request id so stale responses can't win
-- [ ] **5. Backend tidy**
-  - [ ] only write routes create a `Device`; cookie must be a UUID
-  - [ ] seed applies `pantry.json` edits to a populated DB
+- [x] **5. Backend tidy**
+  - [x] only write routes create a `Device`; cookie must be a UUID
+  - [x] seed applies `pantry.json` edits to a populated DB
 - [ ] **6. Dead code + lint**
   - [ ] remove `persistCustomIngredient` and the `custom: []` path (leave `Ingredient.deviceId` until a real migration)
   - [ ] ESLint flat config + `npm run lint` in CI

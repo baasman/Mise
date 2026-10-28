@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getDeviceId } from "@/lib/identity";
+import { getDeviceId, readDeviceId } from "@/lib/identity";
 import { readJson } from "@/lib/http";
 import { MAX_DISH_BYTES, dishSnapshotSchema } from "@/lib/dish-schema";
 import type { DishSnapshot } from "@/lib/types";
@@ -17,7 +17,9 @@ function toSaved(row: DishRow) {
 }
 
 export async function GET() {
-  const deviceId = await getDeviceId();
+  // No cookie yet means nothing saved yet — don't create a device just to read.
+  const deviceId = await readDeviceId();
+  if (!deviceId) return NextResponse.json([]);
   const rows = await prisma.dish.findMany({
     where: { deviceId },
     orderBy: { updatedAt: "desc" },

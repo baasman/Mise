@@ -1,6 +1,7 @@
 // Seed the global pantry from prisma/pantry.json — the full 489-ingredient set
 // (the 30 hand-authored + 459 Claude-profiled), exported so prod can be seeded
-// deterministically without re-spending on Claude. Idempotent.
+// deterministically without re-spending on Claude. Idempotent: applies only
+// additions and edits.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
@@ -21,42 +22,48 @@ interface PantryRow {
   source: string;
 }
 
+// Exactly the fields the seed owns, in a fixed key order, so a row read back
+// from the DB and a pantry.json entry compare equal when nothing changed.
+function seedFields(p: Omit<PantryRow, "slug">) {
+  return {
+    name: p.name,
+    roles: p.roles,
+    aromas: p.aromas,
+    novelty: p.novelty,
+    axes: Object.fromEntries(Object.keys(p.axes).sort().map((k) => [k, p.axes[k as keyof AxisMap]])),
+    texture: p.texture,
+    temperature: p.temperature,
+    provenance: p.provenance || "estimate",
+    source: p.source || "seed",
+  };
+}
+
 async function main() {
   const rows: PantryRow[] = JSON.parse(readFileSync(join(__dirname, "pantry.json"), "utf8"));
 
-  // Skip if the pantry is already populated, so it's cheap to run on every deploy.
-  const existing = await prisma.ingredient.count({ where: { deviceId: null } });
-  if (existing >= rows.length) {
-    console.log(`Pantry already seeded (${existing} ingredients) — skipping.`);
-    return;
-  }
+  // One read, then write only what's new or changed — cheap to run on every
+  // deploy, and edits to pantry.json reach a populated DB. Ingredients dropped
+  // from pantry.json are left in place: saved dishes may still reference them.
+  const current = await prisma.ingredient.findMany({ where: { deviceId: null } });
+  const bySlug = new Map(current.map((r) => [r.slug, r]));
 
-  // Prisma can't target a null value inside a compound-unique `where`, so we
-  // find-then-update/create by hand for the global (deviceId = null) pantry.
+  let created = 0;
+  let updated = 0;
   for (const p of rows) {
-    const fields = {
-      name: p.name,
-      roles: p.roles,
-      aromas: p.aromas,
-      novelty: p.novelty,
-      axes: p.axes as object,
-      texture: p.texture,
-      temperature: p.temperature,
-      provenance: p.provenance || "estimate",
-      source: p.source || "seed",
-    };
-    const existing = await prisma.ingredient.findFirst({
-      where: { deviceId: null, slug: p.slug },
-      select: { id: true },
-    });
-    if (existing) {
-      await prisma.ingredient.update({ where: { id: existing.id }, data: fields });
-    } else {
+    const fields = seedFields(p);
+    const row = bySlug.get(p.slug);
+    if (!row) {
       await prisma.ingredient.create({ data: { slug: p.slug, deviceId: null, ...fields } });
+      created++;
+    } else {
+      const stored = seedFields({ ...row, axes: row.axes as AxisMap } as Omit<PantryRow, "slug">);
+      if (JSON.stringify(stored) !== JSON.stringify(fields)) {
+        await prisma.ingredient.update({ where: { id: row.id }, data: fields });
+        updated++;
+      }
     }
   }
-  const count = await prisma.ingredient.count({ where: { deviceId: null } });
-  console.log(`Seeded pantry — ${count} global ingredients.`);
+  console.log(`Pantry: ${created} added, ${updated} updated, ${rows.length - created - updated} unchanged.`);
 }
 
 main()

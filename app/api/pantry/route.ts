@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getDeviceId } from "@/lib/identity";
 import type { AxisMap, Role, Temperature, Texture } from "@/lib/domain";
 import type { Ingredient } from "@/lib/types";
 
@@ -30,8 +29,11 @@ function toClient(row: {
   };
 }
 
+// Read from the DB on every request — never prerendered at build time (the
+// build has no database, and the pantry can change with a re-seed).
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  await getDeviceId();
   const global = await prisma.ingredient.findMany({
     where: { deviceId: null },
     orderBy: { name: "asc" },

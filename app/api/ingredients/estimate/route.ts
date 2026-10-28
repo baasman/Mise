@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getDeviceId } from "@/lib/identity";
 import { readJson } from "@/lib/http";
 import { LIMITS, clientIp, estimateDailyCap, hit } from "@/lib/rate-limit";
 import { ApiKeyMissing, ESTIMATE_MODEL, estimateFlavor } from "@/lib/anthropic";
@@ -12,7 +11,6 @@ const body = z.object({ name: z.string().min(1).max(80) });
 const tooMany = () => NextResponse.json({ error: "too many requests" }, { status: 429 });
 
 export async function POST(req: Request) {
-  await getDeviceId();
   const json = await readJson(req, 1_000);
   if (!json.ok) return json.response;
   const parsed = body.safeParse(json.data);
