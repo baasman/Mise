@@ -26,5 +26,5 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
   - [x] export: revoke the object URL after a tick
 - [x] **7. Anthropic SDK upgrade** — 0.70 → 0.137 (latest 0.x); casts gone, requests verified byte-for-byte equivalent.
   - [ ] _Follow-up:_ SDK 1.x moves to API version `2026-10-21` (its only breaking change) — upgrade with a live key to check both endpoints.
-- [ ] **8. zod 4** — clears the last audit item
+- [x] **8. zod 4** — no code changes needed; validation re-verified against the live routes. Remaining audit items are build-time only (postcss inside Next, deepmerge-ts inside the Prisma CLI).
 - [ ] _Later:_ split `components/useMise.ts`
