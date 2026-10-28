@@ -1,5 +1,5 @@
 // Mise — Claude integration. Two narrow, structured uses only:
-//   estimateFlavor  (Opus 4.8)  — ground an off-pantry ingredient's 7-axis
+//   estimateFlavor  (Opus 5.5)  — ground an off-pantry ingredient's 7-axis
 //                                  profile + aromas. Presented as an *estimate*.
 //   suggestionWhy   (Haiku 4.5) — phrase the one-line reason for already-ranked
 //                                  candidates. Ranking stays deterministic.
@@ -18,8 +18,15 @@ import {
   type Texture,
 } from "./domain";
 
-export const ESTIMATE_MODEL = "claude-opus-4-8";
+export const ESTIMATE_MODEL = "claude-opus-5-5";
+// Set explicitly: Opus 5.5 defaults to "medium" (earlier Opus defaulted to "high").
+// A calibrated 7-number estimate doesn't need deep thinking; try "low" if latency matters.
+const ESTIMATE_EFFORT = "medium";
+// Claude Haiku 4.5 is the current Haiku.
 const WHY_MODEL = "claude-haiku-4-5";
+// On a safety-classifier decline, the API re-runs the request on Anthropic's
+// recommended model for that refusal category instead of returning the refusal.
+const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -36,8 +43,16 @@ export class ApiKeyMissing extends Error {
   }
 }
 
-function firstText(content: Anthropic.Messages.ContentBlock[]): string {
-  for (const b of content) if (b.type === "text") return b.text;
+// The model (and any fallback) declined; the cook gets an unprofiled ingredient.
+export class EstimateRefused extends Error {
+  constructor(category: string | null) {
+    super(`estimate refused${category ? ` (${category})` : ""}`);
+    this.name = "EstimateRefused";
+  }
+}
+
+function firstText(content: { type: string; text?: string }[]): string {
+  for (const b of content) if (b.type === "text" && b.text != null) return b.text;
   return "";
 }
 
@@ -62,6 +77,7 @@ const estimateSchema = z.object({
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 export interface FlavorEstimate {
+  model: string; // the model that answered — differs from the request on a fallback
   axes: AxisMap;
   aromas: string[];
   texture: Texture;
@@ -76,12 +92,14 @@ export async function estimateFlavor(
   model: string = ESTIMATE_MODEL,
 ): Promise<FlavorEstimate> {
   const c = getClient();
-  // Haiku doesn't take adaptive thinking; Opus/Sonnet/Fable do.
-  const useThinking = !model.includes("haiku");
-  const req: Anthropic.MessageCreateParamsNonStreaming = {
+  // The offline profile script passes Haiku, which takes no adaptive thinking,
+  // effort, or fallbacks. Every other model gets all three; thinking counts
+  // toward max_tokens, so leave room for it.
+  const haiku = model.includes("haiku");
+  const resp = await c.beta.messages.create({
     model,
-    max_tokens: 3000,
-    ...(useThinking ? { thinking: { type: "adaptive" } } : {}),
+    max_tokens: haiku ? 3000 : 16000,
+    ...(haiku ? {} : { thinking: { type: "adaptive" }, betas: [FALLBACK_BETA], fallbacks: "default" }),
     system:
       "You estimate the profile of a single cooking ingredient for a recipe tool. " +
       "These are honest ESTIMATES, not measurements — a real version would draw on a tasting " +
@@ -102,6 +120,7 @@ export async function estimateFlavor(
       },
     ],
     output_config: {
+      ...(haiku ? {} : { effort: ESTIMATE_EFFORT }),
       format: {
         type: "json_schema",
         schema: {
@@ -119,8 +138,9 @@ export async function estimateFlavor(
         },
       },
     },
-  };
-  const resp = await c.messages.create(req);
+  });
+  // A refusal is an HTTP 200 with no usable content — check before parsing.
+  if (resp.stop_reason === "refusal") throw new EstimateRefused(resp.stop_details?.category ?? null);
   const parsed = estimateSchema.parse(JSON.parse(firstText(resp.content)));
   const axes = { ...ZERO_AXES } as AxisMap;
   const raw = parsed as Record<string, unknown>;
@@ -134,6 +154,7 @@ export async function estimateFlavor(
     : "room";
   const roles = parsed.roles.filter((r): r is Role => (ROLES as readonly string[]).includes(r));
   return {
+    model: resp.model,
     axes,
     aromas,
     texture,

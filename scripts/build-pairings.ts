@@ -113,7 +113,7 @@ async function main() {
         const batch = batches[i++];
         try {
           await acquireSlot();
-          const req = {
+          const req: Anthropic.MessageCreateParamsNonStreaming = {
             model: MODEL,
             max_tokens: 3000,
             system,
@@ -151,7 +151,7 @@ async function main() {
               },
             },
           };
-          const resp = await client.messages.create(req as unknown as Anthropic.MessageCreateParamsNonStreaming);
+          const resp = await client.messages.create(req);
           const parsed = JSON.parse(firstText(resp.content)) as {
             pairings: { target: string; classic: string[]; good: string[] }[];
           };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { readJson } from "@/lib/http";
 import { LIMITS, clientIp, estimateDailyCap, hit } from "@/lib/rate-limit";
-import { ApiKeyMissing, ESTIMATE_MODEL, estimateFlavor } from "@/lib/anthropic";
+import { ApiKeyMissing, EstimateRefused, estimateFlavor } from "@/lib/anthropic";
 import type { AxisMap, Role } from "@/lib/domain";
 
 const body = z.object({ name: z.string().min(1).max(80) });
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       temperature: est.temperature,
       roles: est.roles,
       novelty: est.novelty,
-      model: ESTIMATE_MODEL,
+      model: est.model,
     };
     // upsert: two concurrent misses for the same name both land here.
     await prisma.flavorEstimateCache.upsert({
@@ -68,6 +68,12 @@ export async function POST(req: Request) {
     if (e instanceof ApiKeyMissing) {
       // No key configured — let the client fall back to "unprofiled".
       return NextResponse.json({ error: "estimation unavailable" }, { status: 503 });
+    }
+    if (e instanceof EstimateRefused) {
+      // A safety-classifier decline (after fallback) — not a bug; the cook
+      // keeps the ingredient unprofiled and can read it in by hand.
+      console.warn(`[estimate] ${e.message}: ${name}`);
+      return NextResponse.json({ error: "estimation declined" }, { status: 502 });
     }
     console.error("[estimate] failed", e);
     return NextResponse.json({ error: "estimation failed" }, { status: 502 });

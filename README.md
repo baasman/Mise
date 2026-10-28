@@ -13,7 +13,7 @@ a thin, real backend for the three things the prototype left to "a real backend"
 
 - **Next.js (App Router) + TypeScript** — one app, client UI + API route handlers.
 - **Postgres + Prisma** — anonymous device-scoped pantry, flavor-estimate cache, saved dishes.
-- **Anthropic SDK (server-only)** — `claude-opus-4-8` estimates an off-pantry ingredient's
+- **Anthropic SDK (server-only)** — `claude-opus-5-5` estimates an off-pantry ingredient's
   7-axis flavor profile (cached, labeled `estimate`, the cook can override to `your read`);
   `claude-haiku-4-5` phrases the one-line suggestion "why". Ranking stays **deterministic**
   and client-side (`lib/engine.ts`) — Claude never generates the dish.
