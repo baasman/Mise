@@ -44,7 +44,7 @@ async function main() {
   // One read, then write only what's new or changed — cheap to run on every
   // deploy, and edits to pantry.json reach a populated DB. Ingredients dropped
   // from pantry.json are left in place: saved dishes may still reference them.
-  const current = await prisma.ingredient.findMany({ where: { deviceId: null } });
+  const current = await prisma.ingredient.findMany();
   const bySlug = new Map(current.map((r) => [r.slug, r]));
 
   let created = 0;
@@ -53,7 +53,7 @@ async function main() {
     const fields = seedFields(p);
     const row = bySlug.get(p.slug);
     if (!row) {
-      await prisma.ingredient.create({ data: { slug: p.slug, deviceId: null, ...fields } });
+      await prisma.ingredient.create({ data: { slug: p.slug, ...fields } });
       created++;
     } else {
       const stored = seedFields({ ...row, axes: row.axes as AxisMap } as Omit<PantryRow, "slug">);

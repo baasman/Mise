@@ -1,7 +1,7 @@
 // Batch-profile the curated vocabulary into the pantry.
 //
 // For each ingredient name: derive a slug, skip if it already exists in the global
-// pantry (deviceId null), otherwise ask Claude (Opus) for the full profile — 7 axes,
+// pantry, otherwise ask Claude (Opus) for the full profile — 7 axes,
 // aromas, texture, temperature, roles, novelty — and write it to the Ingredient table
 // plus the FlavorEstimateCache (so the live "add your own" path benefits too).
 //
@@ -79,7 +79,7 @@ async function main() {
 
   // What's already in the global pantry?
   const existing = new Set(
-    (await prisma.ingredient.findMany({ where: { deviceId: null }, select: { slug: true } })).map((r) => r.slug),
+    (await prisma.ingredient.findMany({ select: { slug: true } })).map((r) => r.slug),
   );
 
   const todo = VOCAB_NAMES.filter((n) => !existing.has(slugify(n))).slice(0, limit);
@@ -106,7 +106,6 @@ async function main() {
         .create({
           data: {
             slug,
-            deviceId: null,
             name,
             roles: est.roles,
             aromas: est.aromas,
@@ -146,7 +145,7 @@ async function main() {
     }
   });
 
-  const total = await prisma.ingredient.count({ where: { deviceId: null } });
+  const total = await prisma.ingredient.count();
   console.log(`\nDone. Created ${created}, failed ${failed}. Pantry now holds ${total} ingredients.`);
   if (failures.length) console.log(`Failed (re-run to retry): ${failures.join(", ")}`);
 }

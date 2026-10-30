@@ -36,7 +36,7 @@ version would draw on a tasting panel or aroma-compound data (future research).
 npm install
 cp .env.example .env          # set DATABASE_URL (and ANTHROPIC_API_KEY for AI features)
 createdb mise                 # or point DATABASE_URL at any Postgres
-npm run db:push               # create tables
+npm run db:migrate            # create tables (applies prisma/migrations)
 npm run db:seed               # load the pantry
 npm run dev                   # http://localhost:3000
 ```
@@ -51,16 +51,17 @@ and suggestion reasons use the local fallback — the app degrades gracefully.
 | `npm run dev`      | dev server                                      |
 | `npm run build`    | production build                                |
 | `npm test`         | engine unit tests (radar math, ranking, flags)  |
-| `npm run db:push`  | sync schema to the database                     |
+| `npm run db:migrate` | apply pending migrations to the database      |
+| `npm run db:migration -- --name <name>` | create a migration after editing `schema.prisma` (dev DB) |
 | `npm run db:seed`  | sync the global pantry from `prisma/pantry.json` (adds + edits only) |
 
 ## Deploy (Vercel)
 
 The deploy is self-setting-up: on every production build, Vercel runs
-`prisma generate → prisma db push → seed → next build` (see `vercel.json` +
-`scripts/predeploy.ts`). The schema sync and the seed are both idempotent, and the
+`prisma generate → prisma migrate deploy → seed → next build` (see `vercel.json` +
+`scripts/predeploy.ts`). Applying migrations and the seed are both idempotent, and the
 489-ingredient pantry ships in `prisma/pantry.json`, so prod populates itself with no
-manual `db push`/`db:seed` and **no Claude calls** at deploy time.
+manual `migrate deploy`/`db:seed` and **no Claude calls** at deploy time.
 
 The only steps that can't live in the repo (they're infra + secrets):
 
@@ -69,7 +70,7 @@ The only steps that can't live in the repo (they're infra + secrets):
 
    | Variable            | Value                                                       |
    | ------------------- | ----------------------------------------------------------- |
-   | `DATABASE_URL`      | the **direct / unpooled** connection string (`db push` doesn't run over a pgbouncer pool) |
+   | `DATABASE_URL`      | the **direct / unpooled** connection string (migrations don't run over a pgbouncer pool) |
    | `ANTHROPIC_API_KEY` | optional — enables flavor estimation + the AI "why"         |
    | `ESTIMATE_DAILY_CAP` | optional — max uncached Opus estimates per UTC day, all users (default 500) |
 
@@ -78,11 +79,14 @@ That's it — redeploy and the build provisions the schema and seeds the pantry 
 Notes:
 - Preview deploys skip the schema/seed step so they never touch the prod DB; give a
   preview its own `DATABASE_URL` if you want it to run against a separate database.
-- Destructive schema changes make `db push` fail the build (a safety net) rather than
-  silently dropping data — handle those with a migration when the time comes.
+- Schema changes ship as migrations in `prisma/migrations` (edit `schema.prisma`, run
+  `npm run db:migration -- --name <name>` against a dev database, commit the folder).
+  Review the generated SQL: a destructive step may need data handling first, as in
+  `1_drop_ingredient_device`. A database created by the old `db push` setup is
+  baselined automatically on its first deploy (`0_init` is that schema).
 - The two Claude routes are rate-limited per client IP (estimate 20/h, why 120/h;
   `lib/rate-limit.ts`) with a global daily cap on estimates, counted in the
   `RateLimit` table — no extra infra.
 - Saved dishes are anonymous + device-scoped (an httpOnly cookie), so there's no auth
   to configure. For higher traffic, point `DATABASE_URL` at the pooled endpoint and add
-  a `directUrl` to the Prisma datasource for the build-time `db push`.
+  a `directUrl` to the Prisma datasource for the build-time migrations.

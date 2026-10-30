@@ -34,9 +34,6 @@ function toClient(row: {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const global = await prisma.ingredient.findMany({
-    where: { deviceId: null },
-    orderBy: { name: "asc" },
-  });
-  return NextResponse.json({ pantry: global.map(toClient) });
+  const rows = await prisma.ingredient.findMany({ orderBy: { name: "asc" } });
+  return NextResponse.json({ pantry: rows.map(toClient) });
 }

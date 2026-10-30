@@ -27,4 +27,5 @@ Each step must pass `npx tsc --noEmit`, `npm test` and `npm run build`.
 - [x] **7. Anthropic SDK upgrade** — 0.70 → 0.137 (latest 0.x); casts gone, requests verified byte-for-byte equivalent.
   - [x] _Follow-up:_ SDK 1.3 / API version `2026-10-21`. None of its breaking changes apply (no sampling params, documents, citations, Completions, or X-Api-Key proxy); request bodies verified unchanged. Live check: first estimate after deploy.
 - [x] **8. zod 4** — no code changes needed; validation re-verified against the live routes. Remaining audit items are build-time only (postcss inside Next, deepmerge-ts inside the Prisma CLI).
+- [x] **9. Drop `Ingredient.deviceId`** — moved deploys from `db push` to Prisma Migrate (`0_init` baseline, auto-resolved on the first deploy) + `1_drop_ingredient_device`; rehearsed on a db-push-built DB with data, a re-run, and a fresh DB.
 - [ ] _Later:_ split `components/useMise.ts`

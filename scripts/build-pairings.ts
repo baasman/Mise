@@ -72,7 +72,6 @@ async function main() {
   const limit = process.argv[2] ? parseInt(process.argv[2], 10) : Infinity;
 
   const rows = await prisma.ingredient.findMany({
-    where: { deviceId: null },
     select: { slug: true, name: true },
     orderBy: { slug: "asc" },
   });
